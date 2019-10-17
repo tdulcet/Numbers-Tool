@@ -7,6 +7,7 @@ matrix:
     dist: xenial
   - os: linux
     dist: bionic
+before_install: wget https://raw.github.com/tdulcet/Linux-System-Information/master/info.sh -qO - | bash -s --
 install:
   - sudo apt-get -yqq update
   - sudo apt-get -yqq install cppcheck autopoint texinfo gperf
@@ -18,7 +19,7 @@ install:
   - ./bootstrap --gnulib-srcdir="$GNULIB_SRCDIR"
   - ./configure --disable-gcc-warnings
   - make -j "$(nproc)" CFLAGS="-g -fsanitize=address"
-  - ASAN_OPTIONS=detect_leaks=0 make -j "$(nproc)" check CFLAGS="-g -fsanitize=address" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes || true
+  - ASAN_OPTIONS=detect_leaks=0 travis_wait make -j "$(nproc)" check CFLAGS="-g -fsanitize=address" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes || true
   - cp ./src/factor "$DIRNAME/"
   - cd "$DIRNAME/"
   - sed -i 's/"factor"/".\/factor"/' numbers.cpp
