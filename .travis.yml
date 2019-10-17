@@ -9,7 +9,7 @@ matrix:
     dist: bionic
 install:
   - sudo apt-get -yqq update
-  - sudo apt-get -yqq install cppcheck
+  - sudo apt-get -yqq install cppcheck autopoint texinfo gperf
   - DIRNAME=$PWD
   - git clone --depth 1 https://github.com/coreutils/coreutils.git
   - git clone https://github.com/coreutils/gnulib.git
