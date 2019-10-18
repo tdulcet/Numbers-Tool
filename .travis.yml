@@ -10,7 +10,7 @@ matrix:
 before_install: wget https://raw.github.com/tdulcet/Linux-System-Information/master/info.sh -qO - | bash -s --
 install:
   - sudo apt-get -yqq update
-  - sudo apt-get -yqq install cppcheck autopoint texinfo gperf
+  - sudo apt-get -yqq install cppcheck autopoint texinfo gperf expect
   - DIRNAME=$PWD
   - git clone --depth 1 https://github.com/coreutils/coreutils.git
   - git clone https://github.com/coreutils/gnulib.git
