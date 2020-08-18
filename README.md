@@ -44,6 +44,8 @@ Compile with GMP: `g++ -std=c++11 -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP
 Run: `./numbers [OPTION(S)]... <NUMBER(S)>...`\
 If any of the `<NUMBERS>` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.
 
+If you want this program to be available for all users, install it. Run: `sudo mv numbers /usr/local/bin/numbers` and `sudo chmod +x /usr/local/bin/numbers`.
+
 On many Linux distributions, including [Ubuntu](https://bugs.launchpad.net/ubuntu/+source/coreutils/+bug/696618) and [Debian](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=608832), the factor command (part of GNU Coreutils) is built without arbitrary-precision/bignum support. If this is the case on your system and you are compiling this program with GMP, you will also need to build the factor command with GMP. You can check by running this and checking for any "too large" errors (note that if it was built with arbitrary-precision/bignum support, this may take a few minutes to complete):
 
 ```bash
@@ -217,7 +219,7 @@ Number | This program | `numfmt`
 123456 | 123.5K | 124K
 999999 | 1000K | 1.0M
 1000000 | 1M | 1.0M
-1000001 | 1M | 1.1M
+1000001 | 1.000M | 1.1M
 
 The examples above use `--to=si`.
 

@@ -114,7 +114,7 @@ const char *const suffix_power_char[] = {"", "K", "M", "G", "T", "P", "E", "Z", 
 
 const char *const roman[][13] = {
 	{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}, //ASCII
-	{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}  //Unicode
+	{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}	 //Unicode
 };
 
 const short romanvalues[] = {1, 4, 5, 9, 10, 40, 50, 90, 100, 400, 500, 900, 1000};
@@ -246,11 +246,12 @@ string outputunit(long double number, enum scale_type scale, const bool all)
 		}
 	}
 
-	const long double anumber = abs(number) + 0.5;
+	long double anumber = abs(number);
+	anumber += anumber < 10 ? 0.0005 : (anumber < 100 ? 0.005 : (anumber < 1000 ? 0.05 : 0.5));
 
 	if (number != 0 and anumber < 1000 and power > 0)
 	{
-		num_size = snprintf(buf, buf_size - 1, "%Lg", number);
+		num_size = snprintf(buf, buf_size - 1, "%.*Lg", LDBL_DIG, number);
 		if (num_size < 0 or num_size >= (int)buf_size - 1)
 		{
 			cerr << "Error: Failed to prepare number '" << number << "' for printing\n";
