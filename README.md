@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/tdulcet/Numbers-Tool.svg?branch=master)](https://travis-ci.org/tdulcet/Numbers-Tool)
+[![Build Status](https://travis-ci.com/tdulcet/Numbers-Tool.svg?branch=master)](https://travis-ci.com/tdulcet/Numbers-Tool)
+[![Actions Status](https://github.com/tdulcet/Numbers-Tool/workflows/CI/badge.svg?branch=master)](https://github.com/tdulcet/Numbers-Tool/actions)
 
 # Numbers Tool
 
@@ -10,7 +11,7 @@ This program outputs numbers in various representations, including:
 
 * Integer numbers
 	* Locale format with digit grouping (same as `printf "%'d" <NUMBER>` or `numfmt --grouping <NUMBER>`)
-	* \*Bases 2 - 36
+	* \*Arbitrary bases 2 - 36
 	* Auto-scale to unit (similar to `numfmt --to=<UNIT> <NUMBER>`, but with more precision)
 	* [Roman numerals](https://en.wikipedia.org/wiki/Roman_numerals)
 	* [Greek numerals](https://en.wikipedia.org/wiki/Greek_numerals)
@@ -30,7 +31,7 @@ This program outputs numbers in various representations, including:
 
 It is designed as an extension to the existing [factor](https://www.gnu.org/software/coreutils/manual/html_node/factor-invocation.html) and [numfmt](https://www.gnu.org/software/coreutils/manual/html_node/numfmt-invocation.html) commands from GNU Coreutils.
 
-Please visit [tealdulcet.com](https://www.tealdulcet.com/) to support this program and my other software development.
+❤️ Please visit [tealdulcet.com](https://www.tealdulcet.com/) to support this program and my other software development.
 
 ## Usage
 
@@ -82,7 +83,7 @@ cp ./src/factor "$DIRNAME/"
 
 ### Build uutils coreutils
 
-[uutils coreutils](https://github.com/uutils/coreutils) is a cross-platform Rust rewrite of the GNU Coreutils, but [does not currently support arbitrary-precision/bignums](https://github.com/uutils/coreutils/pull/201).
+[uutils coreutils](https://github.com/uutils/coreutils) is a cross-platform Rust rewrite of the GNU Coreutils, but [does not currently support arbitrary-precision/bignums](https://github.com/uutils/coreutils/issues/1559).
 
 <details>
   <summary>Instructions</summary>
