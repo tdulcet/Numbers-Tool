@@ -7,10 +7,8 @@
 // sudo apt-get install libgmp3-dev
 
 // Compile without GMP: g++ -Wall -g -O3 numbers.cpp -o numbers
-// or:                  g++ -std=c++11 -Wall -g -O3 numbers.cpp -o numbers
 
 // Compile with GMP: g++ -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp
-// or:               g++ -std=c++11 -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp
 
 // Run: ./numbers [OPTION(S)]... <NUMBER(S)>...
 // If any of the <NUMBERS> are negative, the first must be preceded by a --.
@@ -113,15 +111,15 @@ enum scale_type const scale_to_types[] = {scale_none, scale_SI, scale_IEC, scale
 const char *const suffix_power_char[] = {"", "K", "M", "G", "T", "P", "E", "Z", "Y"};
 
 const char *const roman[][13] = {
-	{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}, //ASCII
-	{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}	 //Unicode
+	{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}, // ASCII
+	{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}	 // Unicode
 };
 
 const short romanvalues[] = {1, 4, 5, 9, 10, 40, 50, 90, 100, 400, 500, 900, 1000};
 
 const char *const greek[][36] = {
-	{"α", "β", "γ", "δ", "ε", "ϛ", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ϟ", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω", "ϡ", "α", "β", "γ", "δ", "ε", "ϛ", "ζ", "η", "θ"}, //Unicode lowercase
-	{"Α", "Β", "Γ", "Δ", "Ε", "Ϛ", "Ζ", "Η", "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ϟ", "Ρ", "Σ", "Τ", "Υ", "Φ", "Χ", "Ψ", "Ω", "Ϡ", "Α", "Β", "Γ", "Δ", "Ε", "Ϛ", "Ζ", "Η", "Θ"}  //Unicode uppercase
+	{"α", "β", "γ", "δ", "ε", "ϛ", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ϟ", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω", "ϡ", "α", "β", "γ", "δ", "ε", "ϛ", "ζ", "η", "θ"}, // Unicode lowercase
+	{"Α", "Β", "Γ", "Δ", "Ε", "Ϛ", "Ζ", "Η", "Θ", "Ι", "Κ", "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ϟ", "Ρ", "Σ", "Τ", "Υ", "Φ", "Χ", "Ψ", "Ω", "Ϡ", "Α", "Β", "Γ", "Δ", "Ε", "Ϛ", "Ζ", "Η", "Θ"}  // Unicode uppercase
 };
 
 const short greekvalues[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000};
@@ -140,10 +138,10 @@ const uintmax_t thousandpowersscale = pow(1000, thousandpowersindex);
 
 const char *const morsecode[][11] = {
 	// 0-9, -
-	{"- - - - -", ". - - - -", ". . - - -", ". . . - -", ". . . . -", ". . . . .", "- . . . .", "- - . . .", "- - - . .", "- - - - .", "- . . . . -"},																				   //ASCII
-	{"− − − − −", "• − − − −", "• • − − −", "• • • − −", "• • • • −", "• • • • •", "− • • • •", "− − • • •", "− − − • •", "− − − − •", "− • • • • −"},																				   //Bullet and minus sign
-	{"– – – – –", "· – – – –", "· · – – –", "· · · – –", "· · · · –", "· · · · ·", "– · · · ·", "– – · · ·", "– – – · ·", "– – – – ·", "– · · · · –"},																				   //Middle dot and en dash
-	{"▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄ ▄ ▄▄▄▄", "▄ ▄ ▄ ▄ ▄", "▄▄▄▄ ▄ ▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄", "▄▄▄▄ ▄ ▄ ▄ ▄ ▄▄▄▄"} //Blocks
+	{"- - - - -", ". - - - -", ". . - - -", ". . . - -", ". . . . -", ". . . . .", "- . . . .", "- - . . .", "- - - . .", "- - - - .", "- . . . . -"},																				   // ASCII
+	{"− − − − −", "• − − − −", "• • − − −", "• • • − −", "• • • • −", "• • • • •", "− • • • •", "− − • • •", "− − − • •", "− − − − •", "− • • • • −"},																				   // Bullet and minus sign
+	{"– – – – –", "· – – – –", "· · – – –", "· · · – –", "· · · · –", "· · · · ·", "– · · · ·", "– – · · ·", "– – – · ·", "– – – – ·", "– · · · · –"},																				   // Middle dot and en dash
+	{"▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄ ▄▄▄▄ ▄▄▄▄", "▄ ▄ ▄ ▄ ▄▄▄▄", "▄ ▄ ▄ ▄ ▄", "▄▄▄▄ ▄ ▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄ ▄", "▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄▄▄▄ ▄", "▄▄▄▄ ▄ ▄ ▄ ▄ ▄▄▄▄"} // Blocks
 };
 
 const char *const gap = "   ";
@@ -155,6 +153,8 @@ const short brailleindexes[] = {26, 1, 3, 9, 25, 17, 11, 27, 19, 10}; // 0-9
 const char *const fractions[] = {"¼", "½", "¾", "⅐", "⅑", "⅒", "⅓", "⅔", "⅕", "⅖", "⅗", "⅘", "⅙", "⅚", "⅛", "⅜", "⅝", "⅞"};
 
 const long double fractionvalues[] = {1.0L / 4.0L, 1.0L / 2.0L, 3.0L / 4.0L, 1.0L / 7.0L, 1.0L / 9.0L, 1.0L / 10.0L, 1.0L / 3.0L, 2.0L / 3.0L, 1.0L / 5.0L, 2.0L / 5.0L, 3.0L / 5.0L, 4.0L / 5.0L, 1.0L / 6.0L, 5.0L / 6.0L, 1.0L / 8.0L, 3.0L / 8.0L, 5.0L / 8.0L, 7.0L / 8.0L};
+
+const regex re("^.*: ");
 
 #define XARGMATCH(Context, Arg, Arglist, Argsize, Vallist) ((Vallist)[xargmatch(Context, Arg, Arglist, Argsize)])
 
@@ -261,7 +261,7 @@ string outputunit(long double number, enum scale_type scale, const bool all)
 		const int length = 5 + (number < 0 ? 1 : 0);
 		if (num_size > length)
 		{
-			const int prec = anumber < 10 ? 3 : (anumber < 100 ? 2 : (anumber < 1000 ? 1 : 0));
+			const int prec = anumber < 10 ? 3 : (anumber < 100 ? 2 : 1);
 			num_size = snprintf(buf, buf_size - 1, "%.*Lf", prec, number);
 			if (num_size < 0 or num_size >= (int)buf_size - 1)
 			{
@@ -555,7 +555,7 @@ int exec(const char *const cmd, string &result)
 	try
 	{
 		char buffer[128];
-		while (fgets(buffer, sizeof(buffer), pipe) != NULL)
+		while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
 		{
 			result += buffer;
 		}
@@ -574,7 +574,7 @@ int exec(const char *const cmd, string &result)
 template <typename T>
 vector<T> factor(const T &number)
 {
-	string cmd = tostring(FACTOR) + " \"" + tostring(number) + "\" 2>&1";
+	string cmd = string(FACTOR) + R"( ")" + tostring(number) + R"(" 2>&1)";
 
 	string result = "";
 	if (exec(cmd.c_str(), result))
@@ -583,7 +583,6 @@ vector<T> factor(const T &number)
 		exit(1);
 	}
 
-	regex re("^.*: ");
 	result = regex_replace(result, re, "");
 
 	istringstream strm(result);
@@ -743,10 +742,7 @@ string outputprime(const T &number, const bool all)
 
 	vector<T> divisors = divisor(n);
 
-	if (divisors.size() == 1)
-		str = "Prime!";
-	else
-		str = "Composite (Not prime)";
+	str = divisors.size() == 1 ? "Prime!" : "Composite (Not prime)";
 
 	return str;
 }
@@ -959,114 +955,116 @@ void outputall(const long double ld)
 // Output usage
 void usage(const char *const programname)
 {
-	cerr << "Usage:  " << programname << " [OPTION(S)]... <NUMBER(S)>...\n\
-or:     " << programname
-		 << " <OPTION>\n\
-If any of the <NUMBERS> are negative, the first must be preceded by a --. <NUMBERS> can be in Octal, Decimal or Hexadecimal. Use --from-base to specify a different base. See examples below.\n\
-\n\
-Options:\n\
-    Mandatory arguments to long options are mandatory for short options too.\n\
-    -i, --int           Integer numbers (default)\n\
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf \"%'d\" <NUMBER>' or 'numfmt --grouping <NUMBER>')\n\
-            --grouping      \n\
-            --from-base <BASE> Input in bases 2 - 36\n\
-                                   Supports arbitrary-precision/bignums\n\
-        -b, --to-base <BASE>   Output in bases 2 - 36\n\
-                                   Supports arbitrary-precision/bignums\n\
-                --binary           Output in Binary      (same as --to-base 2)\n\
-                --ternary          Output in Ternary     (same as --to-base 3)\n\
-                --quaternary       Output in Quaternary  (same as --to-base 4)\n\
-                --quinary          Output in Quinary     (same as --to-base 6)\n\
-            -o, --octal            Output in Octal       (same as --to-base 8)\n\
-                --decimal          Output in Decimal     (same as --to-base 10)\n\
-                --duo              Output in Duodecimal  (same as --to-base 12)\n\
-            -x, --hex              Output in Hexadecimal (same as --to-base 16)\n\
-                --viges            Output in Vigesimal   (same as --to-base 20)\n\
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)\n\
-                                Run 'numfmt --help' for UNIT options\n\
-        -r, --roman         Output as Roman numerals\n\
-                                Numbers 1 - 3999\n\
-        -g, --greek         Output as Greek numerals\n\
-                                Numbers 1 - 9999, implies --unicode\n\
-        -m, --morse         Output as Morse code\n\
-                                Supports arbitrary-precision/bignums\n\
-            --braille       Output as Braille\n\
-                                Implies --unicode, supports arbitrary-precision/bignums\n\
-        -t, --text          Output as text\n\
-                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross\n\
-        -p, --factors       Output prime factors (same as 'factor <NUMBER>')\n\
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision\n\
-        -d, --divisors      Output divisors\n\
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision\n\
-        -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant\n\
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision\n\
-        -n, --prime         Output if it is prime or composite\n\
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision\n\
-        -a, --all           Output all of the above (default)\n\
-        Except when otherwise noted above, this program supports all Integer numbers "
-		 << INTMAX_MIN << " - " << INTMAX_MAX << ".\n\n\
-    -f, --float         Floating point numbers\n\
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf \"%'g\" <NUMBER>' or 'numfmt --grouping <NUMBER>')\n\
-            --grouping      \n\
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)\n\
-                                Run 'numfmt --help' for UNIT options\n\
-        -c, --fracts        Convert fractions and mathematical constants to Unicode characters\n\
-                                Supports all Unicode fractions, Pi and e constants, implies --unicode\n\
-        -a, --all           Output all of the above (default)\n\
-        Except when otherwise noted above, this program supports all Floating point numbers "
-		 << LDBL_MIN << " - " << LDBL_MAX << ".\n\
-\n\
-        --ascii         ASCII (default)\n\
-    -u, --unicode       Unicode\n\
-                            Only affects --roman, --morse and --factors\n\
-    -l, --lower         Lowercase\n\
-                            Only affects --to-base (with <BASE> > 10) and --greek\n\
-        --upper         Uppercase (default)\n\
-\n\
-        --help          Display this help and exit\n\
-        --version       Output version information and exit\n\
-\n\
-Examples:\n\
-    Output everything for -1234\n\
-    $ " << programname
-		 << " -- -1234\n\
-\n\
-    Output 0361100 (octal), 123456 and 0x1E240 (hexadecimal) in binary\n\
-    $ " << programname
-		 << " --binary 0361100 123456 0x1E240\n\
-\n\
-    Output 11110001001000000 (binary) in base 36\n\
-    $ " << programname
-		 << " --from-base 2 --to-base 36 11110001001000000\n\
-\n\
-    Output 123456 in all the bases (Bash syntax)\n\
-    $ for i in {2..36}; do echo \"Base $i: $("
-		 << programname << " --to-base \"$i\" 123456 | sed -n 's/^.*: //p')\"; done\n\
-\n\
-    Output 1234 as Unicode Roman numerals\n\
-    $ " << programname
-		 << " --roman --unicode 1234\n\
-\n\
-    Convert 1T from ‘SI’ to ‘IEC’ scales (Bash syntax)\n\
-    $ " << programname
-		 << " --to=iec-i \"$(numfmt --from=si 1T)\"\n\
-\n\
-    Output the current time (hour and minute) as text (Bash syntax)\n\
-    $ " << programname
-		 << " --from-base 10 --text \"$(date +%l)\" \"$(date +%M)\" | sed -n 's/^.*: //p'\n\
-\n\
-    Output the aliquot sum for 6, 28, 496, 8128, 33550336, 8589869056 and 137438691328\n\
-    $ " << programname
-		 << " --aliquot 6 28 496 8128 33550336 8589869056 137438691328\n\
-\n\
-    Output if 3, 7, 31, 127, 8191, 131071 and 524287 are prime or composite\n\
-    $ " << programname
-		 << " --prime 3 7 31 127 8191 131071 524287\n\
-\n\
-    Output 1234.25 with Unicode fractions\n\
-    $ " << programname
-		 << " --float --fracts 1234.25\n\
-\n";
+	cerr << "Usage:  " << programname << R"( [OPTION(S)]... <NUMBER(S)>...
+or:     )"
+		 << programname << R"d( <OPTION>
+If any of the <NUMBERS> are negative, the first must be preceded by a --. <NUMBERS> can be in Octal, Decimal or Hexadecimal. Use --from-base to specify a different base. See examples below.
+
+Options:
+    Mandatory arguments to long options are mandatory for short options too.
+    -i, --int           Integer numbers (default)
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'d" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+            --grouping      
+            --from-base <BASE> Input in bases 2 - 36
+                                   Supports arbitrary-precision/bignums
+        -b, --to-base <BASE>   Output in bases 2 - 36
+                                   Supports arbitrary-precision/bignums
+                --binary           Output in Binary      (same as --to-base 2)
+                --ternary          Output in Ternary     (same as --to-base 3)
+                --quaternary       Output in Quaternary  (same as --to-base 4)
+                --quinary          Output in Quinary     (same as --to-base 6)
+            -o, --octal            Output in Octal       (same as --to-base 8)
+                --decimal          Output in Decimal     (same as --to-base 10)
+                --duo              Output in Duodecimal  (same as --to-base 12)
+            -x, --hex              Output in Hexadecimal (same as --to-base 16)
+                --viges            Output in Vigesimal   (same as --to-base 20)
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
+                                Run 'numfmt --help' for UNIT options
+        -r, --roman         Output as Roman numerals
+                                Numbers 1 - 3999
+        -g, --greek         Output as Greek numerals
+                                Numbers 1 - 9999, implies --unicode
+        -m, --morse         Output as Morse code
+                                Supports arbitrary-precision/bignums
+            --braille       Output as Braille
+                                Implies --unicode, supports arbitrary-precision/bignums
+        -t, --text          Output as text
+                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross
+        -p, --factors       Output prime factors (same as 'factor <NUMBER>')
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+        -d, --divisors      Output divisors
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+        -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+        -n, --prime         Output if it is prime or composite
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+        -a, --all           Output all of the above (default)
+        Except when otherwise noted above, this program supports all Integer numbers )d"
+		 << INTMAX_MIN << " - " << INTMAX_MAX << R"d(.
+
+    -f, --float         Floating point numbers
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+            --grouping      
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
+                                Run 'numfmt --help' for UNIT options
+        -c, --fracts        Convert fractions and mathematical constants to Unicode characters
+                                Supports all Unicode fractions, Pi and e constants, implies --unicode
+        -a, --all           Output all of the above (default)
+        Except when otherwise noted above, this program supports all Floating point numbers )d"
+		 << LDBL_MIN << " - " << LDBL_MAX << R"d(.
+
+        --ascii         ASCII (default)
+    -u, --unicode       Unicode
+                            Only affects --roman, --morse and --factors
+    -l, --lower         Lowercase
+                            Only affects --to-base (with <BASE> > 10) and --greek
+        --upper         Uppercase (default)
+
+        --help          Display this help and exit
+        --version       Output version information and exit
+
+Examples:
+    Output everything for -1234
+    $ )d" << programname
+		 << R"d( -- -1234
+
+    Output 0361100 (octal), 123456 and 0x1E240 (hexadecimal) in binary
+    $ )d" << programname
+		 << R"d( --binary 0361100 123456 0x1E240
+
+    Output 11110001001000000 (binary) in base 36
+    $ )d" << programname
+		 << R"d( --from-base 2 --to-base 36 11110001001000000
+
+    Output 123456 in all the bases (Bash syntax)
+    $ for i in {2..36}; do echo "Base $i: $()d"
+		 << programname << R"d( --to-base "$i" 123456 | sed -n 's/^.*: //p')"; done
+
+    Output 1234 as Unicode Roman numerals
+    $ )d" << programname
+		 << R"d( --roman --unicode 1234
+
+    Convert 1T from ‘SI’ to ‘IEC’ scales (Bash syntax)
+    $ )d" << programname
+		 << R"d( --to=iec-i "$(numfmt --from=si 1T)"
+
+    Output the current time (hour and minute) as text (Bash syntax)
+    $ )d" << programname
+		 << R"d( --from-base 10 --text "$(date +%l)" "$(date +%M)" | sed -n 's/^.*: //p'
+
+    Output the aliquot sum for 6, 28, 496, 8128, 33550336, 8589869056 and 137438691328
+    $ )d" << programname
+		 << R"( --aliquot 6 28 496 8128 33550336 8589869056 137438691328
+
+    Output if 3, 7, 31, 127, 8191, 131071 and 524287 are prime or composite
+    $ )" << programname
+		 << R"( --prime 3 7 31 127 8191 131071 524287
+
+    Output 1234.25 with Unicode fractions
+    $ )" << programname
+		 << R"( --float --fracts 1234.25
+
+)";
 }
 
 int main(int argc, char *argv[])
@@ -1290,7 +1288,7 @@ int main(int argc, char *argv[])
 		{
 			for (int i = optind; i < argc; ++i)
 			{
-				const intmax_t ll = strtoimax(argv[i], NULL, frombase);
+				const intmax_t ll = strtoimax(argv[i], nullptr, frombase);
 				if (errno == ERANGE)
 				{
 #if HAVE_GMP
@@ -1362,7 +1360,7 @@ int main(int argc, char *argv[])
 		{
 			for (int i = optind; i < argc; ++i)
 			{
-				const long double ld = strtold(argv[i], NULL);
+				const long double ld = strtold(argv[i], nullptr);
 				if (errno == ERANGE)
 				{
 					cerr << "Error: Floating point number too large to input: '" << argv[i] << "' (" << strerror(errno) << ")\n";

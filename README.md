@@ -35,12 +35,19 @@ It is designed as an extension to the existing [factor](https://www.gnu.org/soft
 
 ## Usage
 
-Requires [GNU Coreutils](https://www.gnu.org/software/coreutils/), which is included with most Linux distributions.
+Requires support for C++11 and [GNU Coreutils](https://www.gnu.org/software/coreutils/), which is included with most Linux distributions.
 
 Support for arbitrary-precision integers requires the [GNU Multiple Precision](https://gmplib.org/) (GMP) library. On Ubuntu and Debian, run `sudo apt-get update` and `sudo apt-get install libgmp3-dev`.
 
-Compile without GMP: `g++ -std=c++11 -Wall -g -O3 numbers.cpp -o numbers`\
-Compile with GMP: `g++ -std=c++11 -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
+Compile without GMP:
+
+GCC: `g++ -Wall -g -O3 numbers.cpp -o numbers`\
+Clang: `clang++ -Wall -g -O3 numbers.cpp -o numbers`
+
+Compile with GMP:
+
+GCC: `g++ -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`\
+Clang: `clang++ -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
 
 Run: `./numbers [OPTION(S)]... <NUMBER(S)>...`\
 If any of the `<NUMBERS>` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.

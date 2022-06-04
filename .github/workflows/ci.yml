@@ -28,9 +28,9 @@ jobs:
         $CXX --version
     - name: Script
       run: |
-        $CXX -std=c++11 -Wall -g -fsanitize=address,undefined numbers.cpp -o numbers
+        $CXX -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o numbers
         ./numbers --help
-        $CXX -std=c++11 -Wall -g -fsanitize=address,undefined numbers.cpp -o gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
+        $CXX -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
         ./gmp_numbers --help
     - name: Cppcheck
       run: cppcheck --enable=all .

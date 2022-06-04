@@ -26,7 +26,7 @@ if [[ $(bc <<< "$n < 1") -ne 0 ]]; then
 fi
 
 echo "$n:"
-echo -e "\tLocale:\t\t\t\t$(printf "%'d" "$n")\n"
+printf "\tLocale:\t\t\t\t%'d\n\n" "$n"
 
 if ! FACTORS=$(factor "$n" 2>&1); then
 	echo "Error: $FACTORS"
@@ -35,11 +35,11 @@ fi
 FACTORS=( $(echo "$FACTORS" | sed -n 's/^.*: //p') )
 echo -e "\tPrime Factors:\t\t\t${FACTORS[*]}"
 DIVISORS=()
-temp=$(( (2 ** ${#FACTORS[@]}) - 1 ))
+temp=$(( (2 ** ${#FACTORS[*]}) - 1 ))
 for (( i = 0; i < temp; ++i )); do
 	idx=$i
 	divisor=1
-	for (( j = 0; j < ${#FACTORS[@]}; ++j )); do
+	for (( j = 0; j < ${#FACTORS[*]}; ++j )); do
 		if (( idx % 2 )); then
 			divisor=$(bc <<< "$divisor * ${FACTORS[j]}")
 			# ((divisor *= ${FACTORS[j]}))
