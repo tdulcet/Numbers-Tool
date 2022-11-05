@@ -41,20 +41,20 @@ Support for arbitrary-precision integers requires the [GNU Multiple Precision](h
 
 Compile without GMP:
 
-GCC: `g++ -Wall -g -O3 numbers.cpp -o numbers`\
-Clang: `clang++ -Wall -g -O3 numbers.cpp -o numbers`
+GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers`\
+Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers`
 
 Compile with GMP:
 
-GCC: `g++ -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`\
-Clang: `clang++ -Wall -g -O3 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
+GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`\
+Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
 
-Run: `./numbers [OPTION(S)]... <NUMBER(S)>...`\
-If any of the `<NUMBERS>` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.
+Run: `./numbers [OPTION(S)]... [NUMBER(S)]...`\
+If any of the `NUMBERS` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.
 
 If you want this program to be available for all users, install it. Run: `sudo mv numbers /usr/local/bin/numbers` and `sudo chmod +x /usr/local/bin/numbers`.
 
-On many Linux distributions, including [Ubuntu](https://bugs.launchpad.net/ubuntu/+source/coreutils/+bug/696618) and [Debian](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=608832), the factor command (part of GNU Coreutils) is built without arbitrary-precision/bignum support. If this is the case on your system and you are compiling this program with GMP, you will also need to build the factor command with GMP. You can check by running this and checking for any "too large" errors (note that if it was built with arbitrary-precision/bignum support, this may take a few minutes to complete):
+On Linux distributions with GNU Coreutils older than 9.0, including [Ubuntu](https://bugs.launchpad.net/ubuntu/+source/coreutils/+bug/696618) and [Debian](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=608832), the factor command (part of GNU Coreutils) is built without arbitrary-precision/bignum support. If this is the case on your system and you are compiling this program with GMP, you will also need to build the factor command with GMP. You can check by running this and checking for any "too large" errors (note that if it was built with arbitrary-precision/bignum support, this may take a few minutes to complete):
 
 ```bash
 factor 9223372036854775807 18446744073709551615 170141183460469231731687303715884105727 340282366920938463463374607431768211455 57896044618658097711785492504343953926634992332820282019728792003956564819967 115792089237316195423570985008687907853269984665640564039457584007913129639935
@@ -80,8 +80,8 @@ GNULIB_SRCDIR="$PWD/gnulib"
 cd coreutils/
 ./bootstrap --gnulib-srcdir="$GNULIB_SRCDIR"
 ./configure # If the next command fails, try rerunning this command with the --disable-gcc-warnings flag
-make -j "$(nproc)" CFLAGS="-g -O3"
-make -j "$(nproc)" check CFLAGS="-g -O3" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
+make -j "$(nproc)" CFLAGS="-g -O3 -flto"
+make -j "$(nproc)" check CFLAGS="-g -O3 -flto" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
 
 # Copy factor command to starting directory
 cp ./src/factor "$DIRNAME/"
@@ -120,9 +120,9 @@ Then change the `FACTOR` variable near the top of the [numbers.cpp](numbers.cpp)
 
 ```
 $ numbers --help
-Usage:  numbers [OPTION(S)]... <NUMBER(S)>...
+Usage:  numbers [OPTION(S)]... [NUMBER(S)]...
 or:     numbers <OPTION>
-If any of the <NUMBERS> are negative, the first must be preceded by a --. <NUMBERS> can be in Octal, Decimal or Hexadecimal. Use --from-base to specify a different base. See examples below.
+If any of the NUMBERS are negative, the first must be preceded by a --. If none are specified on the command line, read them from standard input. NUMBERS can be in Octal, Decimal or Hexadecimal. Use --from-base to specify a different base. See examples below.
 
 Options:
     Mandatory arguments to long options are mandatory for short options too.
@@ -156,6 +156,7 @@ Options:
                 --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross
         -p, --factors       Output prime factors (same as 'factor <NUMBER>')
                                 Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+            -h, --exponents     Output repeated factors in form p^e unless e is 1 (same as 'factor --exponents <NUMBER>')
         -d, --divisors      Output divisors
                                 Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
         -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant
@@ -199,11 +200,11 @@ Examples:
     Output 1234 as Unicode Roman numerals
     $ numbers --roman --unicode 1234
 
-    Convert 1T from ‘SI’ to ‘IEC’ scales (Bash syntax)
-    $ numbers --to=iec-i "$(numfmt --from=si 1T)"
+    Convert 1T from ‘SI’ to ‘IEC’ scales
+    $ numfmt --from=si 1T | numbers --to=iec-i
 
-    Output the current time (hour and minute) as text (Bash syntax)
-    $ numbers --from-base 10 --text "$(date +%l)" "$(date +%M)" | sed -n 's/^.*: //p'
+    Output the current time (hour and minute) as text
+    $ date +%l%n%M | numbers --from-base 10 --text | sed -n 's/^.*: //p'
 
     Output the aliquot sum for 6, 28, 496, 8128, 33550336, 8589869056 and 137438691328
     $ numbers --aliquot 6 28 496 8128 33550336 8589869056 137438691328
@@ -241,8 +242,6 @@ Pull requests welcome! Ideas for contributions:
 * Improve the performance
 	* Parallelize the [factor](https://www.gnu.org/software/coreutils/manual/html_node/factor-invocation.html) command from GNU Coreutils to improve its performance on large numbers
 * Support outputting Roman numerals greater than 3999 and Greek numerals greater than 9999
-* Support outputting [hexadecimal numbers as text](https://en.wikipedia.org/wiki/Hexadecimal#Verbal_and_digital_representations)
-* Support inputting numbers from standard input (stdin)
 * Add tests
 * Submit an enhancement request to [GNU Coreutils](https://www.gnu.org/software/coreutils/) to get this included as an extension to the existing [factor](https://www.gnu.org/software/coreutils/manual/html_node/factor-invocation.html) and [numfmt](https://www.gnu.org/software/coreutils/manual/html_node/numfmt-invocation.html) commands
 * Port to other languages (C, Rust, etc.)
