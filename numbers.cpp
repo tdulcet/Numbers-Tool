@@ -57,6 +57,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cstring>
 #include <iomanip>
 #include <cmath>
 #include <climits>
@@ -677,7 +678,7 @@ map<T2<T>, size_t> factor(const T &number)
 {
 	const string cmd = string(FACTOR) + R"( ")" + tostring(number) + R"(" 2>&1)";
 
-	string result = "";
+	string result;
 	if (exec(cmd.c_str(), result))
 	{
 		cerr << "Error: " << result /*  << "\n" */;
@@ -1051,8 +1052,7 @@ template <typename T>
 string floattostring(T arg)
 {
 	ostringstream strm;
-	typedef numeric_limits<T> dbl;
-	strm.precision(dbl::digits10);
+	strm.precision(numeric_limits<T>::digits10);
 	strm << arg;
 	return strm.str();
 }
