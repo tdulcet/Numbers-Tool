@@ -10,21 +10,21 @@ Copyright © 2019 Teal Dulcet
 This program outputs numbers in various representations, including:
 
 * Integer numbers
-	* Locale format with digit grouping (same as `printf "%'d" <NUMBER>` or `numfmt --grouping <NUMBER>`)
+	* Locale format with digit grouping (same as `printf "%'d" <NUMBER>` or `numfmt --grouping`)
 	* \*Arbitrary bases 2 - 36
-	* Auto-scale to unit (similar to `numfmt --to=<UNIT> <NUMBER>`, but with more precision)
+	* Auto-scale to unit (similar to `numfmt --to=<UNIT>`, but with more precision)
 	* [Roman numerals](https://en.wikipedia.org/wiki/Roman_numerals)
 	* [Greek numerals](https://en.wikipedia.org/wiki/Greek_numerals)
 	* \*[Morse code](https://en.wikipedia.org/wiki/Morse_code)
 	* \*[Braille](https://en.wikipedia.org/wiki/English_Braille#Formatting_marks)
 	* [Text](https://github.com/tdulcet/sliding-text-plus-plus) (spelled out)
-	* \*[Prime factors](https://en.wikipedia.org/wiki/Integer_factorization#Prime_decomposition) (same as `factor <NUMBER>`)
+	* \*[Prime factors](https://en.wikipedia.org/wiki/Integer_factorization#Prime_decomposition) (same as `factor`)
 	* \*[Divisors](https://en.wikipedia.org/wiki/Divisor)
 	* \*[Aliquot sum](https://en.wikipedia.org/wiki/Aliquot_sum) (sum of all divisors) and if it is [perfect](https://en.wikipedia.org/wiki/Perfect_number), [deficient](https://en.wikipedia.org/wiki/Deficient_number) or [abundant](https://en.wikipedia.org/wiki/Abundant_number)
 	* \*If it is [prime](https://en.wikipedia.org/wiki/Prime_number) or [composite](https://en.wikipedia.org/wiki/Composite_number)
 * Floating point numbers
-	* Locale format with digit grouping (same as `printf "%'g" <NUMBER>` or `numfmt --grouping <NUMBER>`)
-	* Auto-scale to unit (similar to `numfmt --to=<UNIT> <NUMBER>`, but with more precision)
+	* Locale format with digit grouping (same as `printf "%'g" <NUMBER>` or `numfmt --grouping`)
+	* Auto-scale to unit (similar to `numfmt --to=<UNIT>`, but with more precision)
 	* Convert [fractions](https://en.wikipedia.org/wiki/Number_Forms) and [mathematical constants](https://en.wikipedia.org/wiki/Mathematical_constant) to Unicode characters
 
 \* Supports arbitrary-precision/bignums
@@ -40,14 +40,12 @@ Requires support for C++11 and [GNU Coreutils](https://www.gnu.org/software/core
 Support for arbitrary-precision integers requires the [GNU Multiple Precision](https://gmplib.org/) (GMP) library. On Ubuntu and Debian, run `sudo apt-get update` and `sudo apt-get install libgmp3-dev`.
 
 Compile without GMP:
-
-GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers`\
-Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers`
+* GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers`
+* Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers`
 
 Compile with GMP:
-
-GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`\
-Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
+* GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
+* Clang: `clang++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
 
 Run: `./numbers [OPTION(S)]... [NUMBER(S)]...`\
 If any of the `NUMBERS` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.
@@ -127,12 +125,12 @@ If any of the NUMBERS are negative, the first must be preceded by a --. If none 
 Options:
     Mandatory arguments to long options are mandatory for short options too.
     -i, --int           Integer numbers (default)
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'d" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'d" <NUMBER>' or 'numfmt --grouping')
             --grouping
             --from-base <BASE> Input in bases 2 - 36
-                                   Supports arbitrary-precision/bignums
+                                   Supports arbitrary-precision/bignums.
         -b, --to-base <BASE>   Output in bases 2 - 36
-                                   Supports arbitrary-precision/bignums
+                                   Supports arbitrary-precision/bignums.
                 --binary           Output in Binary      (same as --to-base 2)
                 --ternary          Output in Ternary     (same as --to-base 3)
                 --quaternary       Output in Quaternary  (same as --to-base 4)
@@ -142,43 +140,45 @@ Options:
                 --duo              Output in Duodecimal  (same as --to-base 12)
             -x, --hex              Output in Hexadecimal (same as --to-base 16)
                 --viges            Output in Vigesimal   (same as --to-base 20)
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
-                                Run 'numfmt --help' for UNIT options
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
+                                Run 'numfmt --help' for UNIT options.
         -r, --roman         Output as Roman numerals
-                                Numbers 1 - 3999
+                                Numbers 1 - 3999.
         -g, --greek         Output as Greek numerals
-                                Numbers 1 - 9999, implies --unicode
+                                Numbers 1 - 9999, implies --unicode.
         -m, --morse         Output as Morse code
-                                Supports arbitrary-precision/bignums
+                                Supports arbitrary-precision/bignums.
             --braille       Output as Braille
-                                Implies --unicode, supports arbitrary-precision/bignums
+                                Implies --unicode, supports arbitrary-precision/bignums.
         -t, --text          Output as text
-                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross
-        -p, --factors       Output prime factors (same as 'factor <NUMBER>')
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
-            -h, --exponents     Output repeated factors in form p^e unless e is 1 (same as 'factor --exponents <NUMBER>')
+                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross.
+        -p, --factors       Output prime factors (similar to 'factor')
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
+            -h, --exponents     Output repeated factors in form p^e unless e is 1 (similar to 'factor --exponents')
         -d, --divisors      Output divisors
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -n, --prime         Output if it is prime or composite
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -a, --all           Output all of the above (default)
+        Except when otherwise noted above, this program supports all Integer numbers -9223372036854775808 - 9223372036854775807.
 
     -f, --float         Floating point numbers
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping')
             --grouping
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
-                                Run 'numfmt --help' for UNIT options
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
+                                Run 'numfmt --help' for UNIT options.
         -c, --fracts        Convert fractions and mathematical constants to Unicode characters
-                                Supports all Unicode fractions, Pi and e constants, implies --unicode
+                                Supports all Unicode fractions, Pi and e constants, implies --unicode.
         -a, --all           Output all of the above (default)
+        Except when otherwise noted above, this program supports all Floating point numbers 3.3621e-4932 - 1.18973e+4932.
 
         --ascii         ASCII (default)
     -u, --unicode       Unicode
-                            Only affects --roman, --morse and --factors
+                            Only affects --roman, --morse and --factors.
     -l, --lower         Lowercase
-                            Only affects --to-base (with <BASE> > 10) and --greek
+                            Only affects --to-base (with <BASE> > 10) and --greek.
         --upper         Uppercase (default)
 
         --help          Display this help and exit
@@ -223,7 +223,7 @@ This program vs the [numfmt](https://www.gnu.org/software/coreutils/manual/html_
 
 Number | This program | `numfmt`
 --- | ---: | ---:
-1234 | 1.235K | 1.3K
+1234 | 1.234K | 1.3K
 12345 | 12.35K | 13K
 123456 | 123.5K | 124K
 999999 | 1000K | 1.0M

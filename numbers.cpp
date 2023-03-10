@@ -63,7 +63,6 @@
 #include <climits>
 #include <cfloat>
 #include <limits>
-#include <cstdlib>
 #include <cstdio>
 #include <clocale>
 #include <vector>
@@ -156,39 +155,41 @@ const short brailleindexes[] = {26, 1, 3, 9, 25, 17, 11, 27, 19, 10}; // 0-9
 const char *const exponents[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁻"}; // 0-9, -
 
 const char *const fractions[] = {"¼", "½", "¾", "⅐", "⅑", "⅒", "⅓", "⅔", "⅕", "⅖", "⅗", "⅘", "⅙", "⅚", "⅛", "⅜", "⅝", "⅞"};
-
 const long double fractionvalues[] = {1.0L / 4.0L, 1.0L / 2.0L, 3.0L / 4.0L, 1.0L / 7.0L, 1.0L / 9.0L, 1.0L / 10.0L, 1.0L / 3.0L, 2.0L / 3.0L, 1.0L / 5.0L, 2.0L / 5.0L, 3.0L / 5.0L, 4.0L / 5.0L, 1.0L / 6.0L, 5.0L / 6.0L, 1.0L / 8.0L, 3.0L / 8.0L, 5.0L / 8.0L, 7.0L / 8.0L};
 
 const regex re("^.*: ");
 
+const char *const constants[] = {"π", "e"};
+const long double constantvalues[] = {M_PI, M_E};
+
+const long double max_bit = scalbn(1.0L, LDBL_MANT_DIG - 1);
+const long double MAX = max_bit + (max_bit - 1);
+
 template <typename T>
 using T2 = typename conditional<is_integral<T>::value, make_unsigned<T>, common_type<T>>::type::type;
 
-#define XARGMATCH(Context, Arg, Arglist, Argsize, Vallist) ((Vallist)[xargmatch(Context, Arg, Arglist, Argsize)])
-
 // Check if the argument is in the argument list
 // Adapted from: https://github.com/coreutils/gnulib/blob/master/lib/argmatch.c
-ptrdiff_t xargmatch(const char *const context, const char *const arg, const char *const *arglist, size_t argsize)
+template <typename T>
+T xargmatch(const char *const context, const char *const arg, const char *const *arglist, const size_t argsize, const T vallist[])
 {
 	const size_t arglen = strlen(arg);
 
 	for (size_t i = 0; i < argsize; ++i)
 		if (!strncmp(arglist[i], arg, arglen) and strlen(arglist[i]) == arglen)
-			return i;
+			return vallist[i];
 
-	cerr << "Error: Invalid argument ‘" << arg << "’ for ‘" << context << "’\n";
+	cerr << "Error: Invalid argument " << quoted(arg) << " for " << quoted(context) << "\n";
 	exit(1);
 
-	return -1;
+	// return -1;
 }
 
 // Auto-scale number to unit
 // Adapted from: https://github.com/coreutils/coreutils/blob/master/src/numfmt.c
-string outputunit(long double number, enum scale_type scale, const bool all = false)
+string outputunit(long double number, const scale_type scale, const bool all = false)
 {
-	char buf[128];
-	const size_t buf_size = sizeof(buf);
-	int num_size = 0;
+	ostringstream strm;
 
 	unsigned int x = 0;
 	long double val = number;
@@ -209,24 +210,17 @@ string outputunit(long double number, enum scale_type scale, const bool all = fa
 			return {};
 		}
 
-		num_size = snprintf(buf, buf_size, "%.*Lg", LDBL_DIG, number);
-		if (num_size < 0 or num_size >= (int)buf_size)
-		{
-			cerr << "Error: Failed to prepare number '" << number << "' for printing\n";
-			exit(1);
-		}
-		return buf;
+		strm << setprecision(LDBL_DIG) << number;
+		return strm.str();
 	}
 
 	if (x > 27 - 1)
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number too large to be printed: '" << number << "' (cannot handle numbers > 999Y)\n";
-			return {};
-		}
+
+		cerr << "Error: Number too large to be printed: '" << number << "' (cannot handle numbers > 999Y)\n";
+		return {};
 	}
 
 	double scale_base;
@@ -255,40 +249,32 @@ string outputunit(long double number, enum scale_type scale, const bool all = fa
 	}
 
 	long double anumber = abs(number);
-	anumber += anumber < 10 ? 0.0005 : (anumber < 100 ? 0.005 : (anumber < 1000 ? 0.05 : 0.5));
+	anumber += anumber < 10 ? 0.0005 : anumber < 100 ? 0.005
+								   : anumber < 1000	 ? 0.05
+													 : 0.5;
+
+	string str;
 
 	if (number != 0 and anumber < 1000 and power > 0)
 	{
-		num_size = snprintf(buf, buf_size - 1, "%.*Lg", LDBL_DIG, number);
-		if (num_size < 0 or num_size >= (int)buf_size - 1)
-		{
-			cerr << "Error: Failed to prepare number '" << number << "' for printing\n";
-			exit(1);
-		}
+		strm << setprecision(LDBL_DIG) << number;
+		str = strm.str();
 
-		const int length = 5 + (number < 0 ? 1 : 0);
-		if (num_size > length)
+		const unsigned int length = 5 + (number < 0 ? 1 : 0);
+		if (str.length() > length)
 		{
-			const int prec = anumber < 10 ? 3 : (anumber < 100 ? 2 : 1);
-			num_size = snprintf(buf, buf_size - 1, "%.*Lf", prec, number);
-			if (num_size < 0 or num_size >= (int)buf_size - 1)
-			{
-				cerr << "Error: Failed to prepare number '" << number << "' for printing\n";
-				exit(1);
-			}
+			const int prec = anumber < 10 ? 3 : anumber < 100 ? 2
+															  : 1;
+			strm.str("");
+			strm << setprecision(prec) << fixed << number;
+			str = strm.str();
 		}
 	}
 	else
 	{
-		num_size = snprintf(buf, buf_size - 1, "%.0Lf", number);
-		if (num_size < 0 or num_size >= (int)buf_size - 1)
-		{
-			cerr << "Error: Failed to prepare number '" << number << "' for printing\n";
-			exit(1);
-		}
+		strm << setprecision(0) << fixed << number;
+		str = strm.str();
 	}
-
-	string str = buf;
 
 	str += power < 9 ? suffix_power_char[power] : "(error)";
 
@@ -299,7 +285,8 @@ string outputunit(long double number, enum scale_type scale, const bool all = fa
 }
 
 // Output number in bases 2 - 36
-string outputbase(const intmax_t number, const short base, const bool uppercase)
+template <typename T>
+string outputbase(const T number, const short base = 10, const bool uppercase = false)
 {
 	if (base < 2 or base > 36)
 	{
@@ -307,8 +294,8 @@ string outputbase(const intmax_t number, const short base, const bool uppercase)
 		exit(1);
 	}
 
-	// uintmax_t anumber = abs(number);
-	uintmax_t anumber = number;
+	// T2<T> anumber = abs(number);
+	T2<T> anumber = number;
 	anumber = number < 0 ? -anumber : anumber;
 
 	string str;
@@ -317,10 +304,7 @@ string outputbase(const intmax_t number, const short base, const bool uppercase)
 	{
 		char digit = anumber % base;
 
-		if (digit < 10)
-			digit += '0';
-		else
-			digit += (uppercase ? 'A' : 'a') - 10;
+		digit += digit < 10 ? '0' : (uppercase ? 'A' : 'a') - 10;
 
 		str = digit + str;
 
@@ -329,7 +313,7 @@ string outputbase(const intmax_t number, const short base, const bool uppercase)
 	} while (anumber > 0);
 
 	if (number < 0)
-		str = "-" + str;
+		str = '-' + str;
 
 	return str;
 }
@@ -345,17 +329,15 @@ string outputroman(const intmax_t number, const bool unicode, const bool all = f
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be between 1 - 3999\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be between 1 - 3999\n";
+		return {};
 	}
 
 	string str;
 
 	if (number < 0)
-		str = "-";
+		str = '-';
 
 	for (int i = (sizeof romanvalues / sizeof romanvalues[0]) - 1; anumber > 0; --i)
 	{
@@ -382,17 +364,15 @@ string outputgreek(const intmax_t number, const bool uppercase, const bool all =
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be between 1 - 9999\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be between 1 - 9999\n";
+		return {};
 	}
 
 	string str;
 
 	if (number < 0)
-		str = "-";
+		str = '-';
 
 	for (int i = (sizeof greekvalues / sizeof greekvalues[0]) - 1; anumber > 0; --i)
 	{
@@ -465,8 +445,8 @@ string outputbraille(const T &number)
 
 	str += braille[60]; // Number indicator
 
-	for (size_t i = 0; i < text.length(); ++i)
-		str += braille[brailleindexes[text[i] - '0']];
+	for (char i : text)
+		str += braille[brailleindexes[i - '0']];
 
 	return str;
 }
@@ -505,7 +485,7 @@ string outputtext(const intmax_t number, const bool special)
 	string str;
 
 	if (number < 0)
-		// str = "-";
+		// str = '-';
 		str = "negative ";
 	if (special and n <= 12 * 12 * 12)
 	{
@@ -514,39 +494,39 @@ string outputtext(const intmax_t number, const bool special)
 			str += "pair";
 			return str;
 		}
-		else if (n == 13)
+		if (n == 13)
 		{
 			str += "baker's dozen";
 			return str;
 		}
-		else if (n == 20)
+		if (n == 20)
 		{
 			str += "score";
 			return str;
 		}
-		else if (n % 12 == 0)
+		if (n % 12 == 0)
 		{
-			uintmax_t temp = n / 12;
+			intmax_t temp = n / 12;
 			if (temp >= 1 and temp < 12)
 			{
 				if (temp > 1)
-					str += outputtext(temp, false) + " ";
+					str += outputtext(temp, false) + ' ';
 
 				str += "dozen";
 				return str;
 			}
-			else if (temp % 12 == 0)
+			if (temp % 12 == 0)
 			{
 				temp /= 12;
 				if (temp >= 1 and temp < 12)
 				{
 					if (temp > 1)
-						str += outputtext(temp, false) + " ";
+						str += outputtext(temp, false) + ' ';
 
 					str += "gross";
 					return str;
 				}
-				else if (temp == 12)
+				if (temp == 12)
 				{
 					str += "great gross";
 					return str;
@@ -571,7 +551,7 @@ string outputtext(const intmax_t number, const bool special)
 		{
 			string aastr;
 			if (n)
-				// aastr += " ";
+				// aastr += ' ';
 				aastr += astr.empty() and (h < 100 or h % 100 == 0) ? " and " : ", ";
 			if (h >= 100)
 			{
@@ -579,7 +559,7 @@ string outputtext(const intmax_t number, const bool special)
 				aastr += " hundred";
 				h %= 100;
 				if (h)
-					// aastr += " ";
+					// aastr += ' ';
 					aastr += " and ";
 			}
 			if (h >= 20 or h == 10)
@@ -587,7 +567,7 @@ string outputtext(const intmax_t number, const bool special)
 				aastr += TENS[h / 10];
 				h %= 10;
 				if (h)
-					aastr += "-";
+					aastr += '-';
 			}
 			if (h < 20 and h > 10)
 				aastr += TEENS[h - 10];
@@ -595,7 +575,7 @@ string outputtext(const intmax_t number, const bool special)
 				aastr += ONES[h];
 			if (index)
 			{
-				aastr += " ";
+				aastr += ' ';
 				aastr += THOUSANDPOWERS[index];
 			}
 			astr = aastr + astr;
@@ -622,13 +602,13 @@ string outputhextext(const intmax_t number)
 		n /= scale;
 		string astr;
 		if (n)
-			astr += " ";
+			astr += ' ';
 		if (h >= 0x20 or h == 0x10)
 		{
 			astr += HEXTENS[h / 0x10];
 			h %= 0x10;
 			if (h)
-				astr += "-";
+				astr += '-';
 		}
 		if (h < 0x20 and h > 0x10)
 			astr += HEXTEENS[h - 0x10];
@@ -642,7 +622,7 @@ string outputhextext(const intmax_t number)
 	} while (n > 0);
 
 	if (number < 0)
-		// str = "-" + str;
+		// str = '-' + str;
 		str = "negative " + str;
 
 	return str;
@@ -657,7 +637,7 @@ int exec(const char *const cmd, string &result)
 	try
 	{
 		char buffer[128];
-		while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+		while (fgets(buffer, sizeof(buffer), pipe))
 		{
 			result += buffer;
 		}
@@ -705,16 +685,14 @@ string outputfactors(const T &number, const bool print_exponents, const bool uni
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be > 0\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be > 0\n";
+		return {};
 	}
 
 	// const T2<T> n = abs(number);
-	T2<T> n = number;
-	n = number < 0 ? -n : n;
+	const T2<T> &n = number;
+	// n = number < 0 ? -n : n;
 
 	ostringstream strm;
 	map<T2<T>, size_t> counts = factor(n);
@@ -726,8 +704,8 @@ string outputfactors(const T &number, const bool print_exponents, const bool uni
 		for (size_t j = 0; j < exponent; ++j)
 		{
 			if (strm.tellp())
-				strm << " " << (unicode ? "×" : "*") << " ";
-			// strm << " ";
+				strm << ' ' << (unicode ? "×" : "*") << ' ';
+			// strm << ' ';
 			strm << prime;
 			if (print_exponents and exponent > 1)
 			{
@@ -778,24 +756,22 @@ string outputdivisors(const T &number, const bool all = false)
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be > 0\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be > 0\n";
+		return {};
 	}
 
 	ostringstream strm;
 	// const T2<T> n = abs(number);
-	T2<T> n = number;
-	n = number < 0 ? -n : n;
+	const T2<T> &n = number;
+	// n = number < 0 ? -n : n;
 
 	vector<T2<T>> divisors = divisor(n);
 
 	for (size_t i = 0; i < divisors.size(); ++i)
 	{
 		if (i > 0)
-			strm << " ";
+			strm << ' ';
 		strm << divisors[i];
 	}
 
@@ -810,17 +786,15 @@ string outputaliquot(const T &number, const bool all = false)
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be > 1\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be > 1\n";
+		return {};
 	}
 
 	ostringstream strm;
 	// const T2<T> n = abs(number);
-	T2<T> n = number;
-	n = number < 0 ? -n : n;
+	const T2<T> &n = number;
+	// n = number < 0 ? -n : n;
 
 	vector<T2<T>> divisors = divisor(n);
 	const T2<T> sum = accumulate(divisors.begin(), divisors.end(), T2<T>(0));
@@ -847,17 +821,15 @@ string outputprime(const T &number, const bool all = false)
 	{
 		if (all)
 			return "N/A";
-		else
-		{
-			cerr << "Error: Number must be > 1\n";
-			return {};
-		}
+
+		cerr << "Error: Number must be > 1\n";
+		return {};
 	}
 
 	string str;
 	// const T2<T> n = abs(number);
-	T2<T> n = number;
-	n = number < 0 ? -n : n;
+	const T2<T> &n = number;
+	// n = number < 0 ? -n : n;
 
 	vector<T2<T>> divisors = divisor(n);
 
@@ -868,59 +840,52 @@ string outputprime(const T &number, const bool all = false)
 
 // Convert fractions and constants to Unicode characters
 // Adapted from: https://github.com/tdulcet/Tables-and-Graphs/blob/master/graphs.hpp
-string outputlabel(const long double number)
+string outputfraction(const long double number)
 {
 	bool output = false;
 
-	long double intpart = 0;
-	long double fractionpart = abs(modf(number, &intpart));
-
 	ostringstream strm;
+	strm << setprecision(LDBL_DIG);
 
-	for (unsigned int i = 0; i < (sizeof fractions / sizeof fractions[0]) and !output; ++i)
+	const long double n = abs(number);
+	if (n <= MAX)
 	{
-		if (abs(fractionpart - fractionvalues[i]) < DBL_EPSILON)
+		long double intpart = 0;
+		long double fractionpart = abs(modf(number, &intpart));
+
+		for (size_t i = 0; i < (sizeof fractions / sizeof fractions[0]) and !output; ++i)
 		{
-			if (intpart != 0)
-				strm << intpart;
+			if (abs(fractionpart - fractionvalues[i]) <= DBL_EPSILON * n)
+			{
+				if (intpart == 0 and number < 0)
+					strm << '-';
+				else if (intpart != 0)
+					strm << intpart;
 
-			strm << fractions[i];
+				strm << fractions[i];
 
-			output = true;
+				output = true;
+			}
 		}
-	}
 
-	if (abs(number) >= DBL_EPSILON)
-	{
-		if (!output and fmod(number, M_PI) == 0)
+		if (n > DBL_EPSILON)
 		{
-			const char symbol[] = "π";
+			for (size_t i = 0; i < (sizeof constants / sizeof constants[0]) and !output; ++i)
+			{
+				if (abs(fmod(number, constantvalues[i])) <= DBL_EPSILON * n)
+				{
+					intpart = number / constantvalues[i];
 
-			intpart = number / M_PI;
+					if (intpart == -1)
+						strm << '-';
+					else if (intpart != 1)
+						strm << intpart;
 
-			if (intpart == -1)
-				strm << "-";
-			else if (intpart != 1)
-				strm << intpart;
+					strm << constants[i];
 
-			strm << symbol;
-
-			output = true;
-		}
-		else if (!output and fmod(number, M_E) == 0)
-		{
-			const char symbol[] = "e";
-
-			intpart = number / M_E;
-
-			if (intpart == -1)
-				strm << "-";
-			else if (intpart != 1)
-				strm << intpart;
-
-			strm << symbol;
-
-			output = true;
+					output = true;
+				}
+			}
 		}
 	}
 
@@ -933,8 +898,12 @@ string outputlabel(const long double number)
 // Output all for integer numbers
 void outputall(const intmax_t ll, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
 {
-	cout << "\n\tLocale:\t\t\t\t";
-	printf("%'" PRIdMAX, ll);
+	// cout << "\n\tLocale:\t\t\t\t";
+	// printf("%'" PRIdMAX, ll);
+	ostringstream strm;
+	strm.imbue(locale(""));
+	strm << ll;
+	cout << "\n\tLocale:\t\t\t\t" << strm.str();
 
 	/* cout << "\n\n\tC (printf)\n";
 	cout << "\t\tOctal (Base 8):\t\t";
@@ -945,7 +914,8 @@ void outputall(const intmax_t ll, const bool print_exponents, const bool unicode
 	printf("%" SCNxMAX, ll);
 
 	cout << "\n\n\tC++ (cout)\n";
-	cout << "\t\tOctal (Base 8):\t\t" << oct << ll;
+	cout << "\t\tBinary (Base 2):\t\t" << bitset<8>{ll};
+	cout << "\n\t\tOctal (Base 8):\t\t" << oct << ll;
 	cout << "\n\t\tDecimal (Base 10):\t" << dec << ll;
 	cout << "\n\t\tHexadecimal (Base 16):\t" << hex << ll; */
 
@@ -961,7 +931,7 @@ void outputall(const intmax_t ll, const bool print_exponents, const bool unicode
 	// cout << "\n\tBase 36:\t\t\t" << outputbase(ll, 36, uppercase);
 
 	cout << "\n";
-	for (int i = 2; i <= 36; ++i)
+	for (short i = 2; i <= 36; ++i)
 		cout << "\n\tBase " << i << ":\t\t\t" << (i < 10 ? "\t" : "") << outputbase(ll, i, uppercase);
 
 	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ll, scale_SI, true);
@@ -990,8 +960,12 @@ void outputall(const intmax_t ll, const bool print_exponents, const bool unicode
 #if HAVE_GMP
 void outputall(const mpz_class &num, const bool print_exponents, const bool unicode, const bool uppercase)
 {
-	cout << "\n\tLocale:\t\t\t\t";
-	gmp_printf("%'Zd", num.get_mpz_t());
+	// cout << "\n\tLocale:\t\t\t\t";
+	// gmp_printf("%'Zd", num.get_mpz_t());
+	ostringstream strm;
+	strm.imbue(locale(""));
+	strm << num;
+	cout << "\n\tLocale:\t\t\t\t" << strm.str();
 
 	/* cout << "\n\n\tC (printf)\n";
 	cout << "\t\tOctal (Base 8):\t\t";
@@ -1002,7 +976,8 @@ void outputall(const mpz_class &num, const bool print_exponents, const bool unic
 	gmp_printf("%Zx", num.get_mpz_t());
 
 	cout << "\n\n\tC++ (cout)\n";
-	cout << "\t\tOctal (Base 8):\t\t" << oct << num;
+	cout << "\t\tBinary (Base 2):\t\t" << bitset<8>{num};
+	cout << "\n\t\tOctal (Base 8):\t\t" << oct << num;
 	cout << "\n\t\tDecimal (Base 10):\t" << dec << num;
 	cout << "\n\t\tHexadecimal (Base 16):\t" << hex << num; */
 
@@ -1060,27 +1035,31 @@ string floattostring(T arg)
 // Output all for floating point numbers
 void outputall(const long double ld)
 {
-	cout << "\n\tLocale:\t\t\t\t";
-	printf("%'.*Lg", LDBL_DIG, ld);
+	// cout << "\n\tLocale:\t\t\t\t";
+	// printf("%'.*Lg", LDBL_DIG, ld);
+	ostringstream strm;
+	strm.imbue(locale(""));
+	strm << setprecision(LDBL_DIG) << ld;
+	cout << "\n\tLocale:\t\t\t\t" << strm.str();
 
 	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ld, scale_SI, true);
 	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC, true);
 	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC_I, true);
 
-	cout << "\n\n\tFractions and constants:\t" << outputlabel(ld) << "\n";
+	cout << "\n\n\tFractions and constants:\t" << outputfraction(ld) << "\n";
 }
 
 // Handle integer numbers
-int integers(const char *const token, const int frombase, const int tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, const int arg)
+int integers(const char *const token, const int frombase, const short tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, const int arg)
 {
 	char *p;
 	const intmax_t ll = strtoimax(token, &p, frombase);
 	if (*p)
 	{
-		cerr << "Error: Not a valid integer number: " << quoted(token) << ".\n";
+		cerr << "Error: Invalid integer number: " << quoted(token) << ".\n";
 		return 1;
 	}
-	else if (errno == ERANGE)
+	if (errno == ERANGE)
 	{
 #if HAVE_GMP
 		char const *str = token;
@@ -1098,7 +1077,13 @@ int integers(const char *const token, const int frombase, const int tobase, cons
 				outputall(num, print_exponents, unicode, uppercase);
 				break;
 			case 'e':
-				gmp_printf("%'Zd", num.get_mpz_t());
+				// gmp_printf("%'Zd", num.get_mpz_t());
+				{
+					ostringstream strm;
+					strm.imbue(locale(""));
+					strm << num;
+					cout << strm.str();
+				}
 				break;
 			case 'm':
 				cout << outputmorsecode(num, unicode);
@@ -1143,7 +1128,13 @@ int integers(const char *const token, const int frombase, const int tobase, cons
 				outputall(ll, print_exponents, unicode, uppercase, special);
 				break;
 			case 'e':
-				printf("%'" PRIdMAX, ll);
+				// printf("%'" PRIdMAX, ll);
+				{
+					ostringstream strm;
+					strm.imbue(locale(""));
+					strm << ll;
+					cout << strm.str();
+				}
 				break;
 			case TO_OPTION:
 				cout << outputunit(ll, scale_to);
@@ -1189,29 +1180,35 @@ int floats(const char *const token, const scale_type scale_to, const int arg)
 	const long double ld = strtold(token, &p);
 	if (*p)
 	{
-		cerr << "Error: Not a valid floating point number: " << quoted(token) << "\n";
+		cerr << "Error: Invalid floating point number: " << quoted(token) << "\n";
 		return 1;
 	}
-	else if (errno == ERANGE)
+	if (errno == ERANGE)
 	{
 		cerr << "Error: Floating point number too large to input: " << quoted(token) << " (" << strerror(errno) << ")\n";
 		return 1;
 	}
 
-	cout << ld << " (" << floattostring(ld) << "): ";
+	cout << floattostring(ld) << ": ";
 	switch (arg)
 	{
 	case 'a':
 		outputall(ld);
 		break;
 	case 'e':
-		printf("%'.*Lg", LDBL_DIG, ld);
+		// printf("%'.*Lg", LDBL_DIG, ld);
+		{
+			ostringstream strm;
+			strm.imbue(locale(""));
+			strm << setprecision(LDBL_DIG) << ld;
+			cout << strm.str();
+		}
 		break;
 	case TO_OPTION:
 		cout << outputunit(ld, scale_to);
 		break;
 	case 'c':
-		cout << outputlabel(ld);
+		cout << outputfraction(ld);
 		break;
 	}
 	cout << endl;
@@ -1230,12 +1227,12 @@ If any of the NUMBERS are negative, the first must be preceded by a --. If none 
 Options:
     Mandatory arguments to long options are mandatory for short options too.
     -i, --int           Integer numbers (default)
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'d" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'d" <NUMBER>' or 'numfmt --grouping')
             --grouping      
             --from-base <BASE> Input in bases 2 - 36
-                                   Supports arbitrary-precision/bignums
+                                   Supports arbitrary-precision/bignums.
         -b, --to-base <BASE>   Output in bases 2 - 36
-                                   Supports arbitrary-precision/bignums
+                                   Supports arbitrary-precision/bignums.
                 --binary           Output in Binary      (same as --to-base 2)
                 --ternary          Output in Ternary     (same as --to-base 3)
                 --quaternary       Output in Quaternary  (same as --to-base 4)
@@ -1245,47 +1242,47 @@ Options:
                 --duo              Output in Duodecimal  (same as --to-base 12)
             -x, --hex              Output in Hexadecimal (same as --to-base 16)
                 --viges            Output in Vigesimal   (same as --to-base 20)
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
-                                Run 'numfmt --help' for UNIT options
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
+                                Run 'numfmt --help' for UNIT options.
         -r, --roman         Output as Roman numerals
-                                Numbers 1 - 3999
+                                Numbers 1 - 3999.
         -g, --greek         Output as Greek numerals
-                                Numbers 1 - 9999, implies --unicode
+                                Numbers 1 - 9999, implies --unicode.
         -m, --morse         Output as Morse code
-                                Supports arbitrary-precision/bignums
+                                Supports arbitrary-precision/bignums.
             --braille       Output as Braille
-                                Implies --unicode, supports arbitrary-precision/bignums
+                                Implies --unicode, supports arbitrary-precision/bignums.
         -t, --text          Output as text
-                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross
-        -p, --factors       Output prime factors (same as 'factor <NUMBER>')
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
-            -h, --exponents     Output repeated factors in form p^e unless e is 1 (same as 'factor --exponents <NUMBER>')
+                --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross.
+        -p, --factors       Output prime factors (similar to 'factor')
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
+            -h, --exponents     Output repeated factors in form p^e unless e is 1 (similar to 'factor --exponents')
         -d, --divisors      Output divisors
-                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -n, --prime         Output if it is prime or composite
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -a, --all           Output all of the above (default)
         Except when otherwise noted above, this program supports all Integer numbers )d"
 		 << INTMAX_MIN << " - " << INTMAX_MAX << R"d(.
 
     -f, --float         Floating point numbers
-        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping <NUMBER>')
+        -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping')
             --grouping      
-            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT> <NUMBER>', but with more precision)
-                                Run 'numfmt --help' for UNIT options
+            --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
+                                Run 'numfmt --help' for UNIT options.
         -c, --fracts        Convert fractions and mathematical constants to Unicode characters
-                                Supports all Unicode fractions, Pi and e constants, implies --unicode
+                                Supports all Unicode fractions, Pi and e constants, implies --unicode.
         -a, --all           Output all of the above (default)
         Except when otherwise noted above, this program supports all Floating point numbers )d"
 		 << LDBL_MIN << " - " << LDBL_MAX << R"d(.
 
         --ascii         ASCII (default)
     -u, --unicode       Unicode
-                            Only affects --roman, --morse and --factors
+                            Only affects --roman, --morse and --factors.
     -l, --lower         Lowercase
-                            Only affects --to-base (with <BASE> > 10) and --greek
+                            Only affects --to-base (with <BASE> > 10) and --greek.
         --upper         Uppercase (default)
 
         --help          Display this help and exit
@@ -1358,43 +1355,43 @@ int main(int argc, char *argv[])
 	// https://stackoverflow.com/a/38646489
 
 	static struct option long_options[] = {
-		{"int", no_argument, NULL, 'i'},
-		{"locale", no_argument, NULL, 'e'},
-		{"grouping", no_argument, NULL, 'e'},
-		{"from-base", required_argument, NULL, FROM_BASE_OPTION},
-		{"to-base", required_argument, NULL, 'b'},
-		{"binary", no_argument, NULL, BINARY_OPTION},		  // 2
-		{"ternary", no_argument, NULL, TERNARY_OPTION},		  // 3
-		{"quaternary", no_argument, NULL, QUATERNARY_OPTION}, // 4
-		{"quinary", no_argument, NULL, QUINARY_OPTION},		  // 6
-		{"octal", no_argument, NULL, 'o'},
-		{"decimal", no_argument, NULL, DECIMAL_OPTION}, // 1
-		{"duo", no_argument, NULL, DUO_OPTION},			// j
-		{"hex", no_argument, NULL, 'x'},
-		{"viges", no_argument, NULL, VIGES_OPTION}, // k
+		{"int", no_argument, nullptr, 'i'},
+		{"locale", no_argument, nullptr, 'e'},
+		{"grouping", no_argument, nullptr, 'e'},
+		{"from-base", required_argument, nullptr, FROM_BASE_OPTION},
+		{"to-base", required_argument, nullptr, 'b'},
+		{"binary", no_argument, nullptr, BINARY_OPTION},		 // 2
+		{"ternary", no_argument, nullptr, TERNARY_OPTION},		 // 3
+		{"quaternary", no_argument, nullptr, QUATERNARY_OPTION}, // 4
+		{"quinary", no_argument, nullptr, QUINARY_OPTION},		 // 6
+		{"octal", no_argument, nullptr, 'o'},
+		{"decimal", no_argument, nullptr, DECIMAL_OPTION}, // 1
+		{"duo", no_argument, nullptr, DUO_OPTION},		   // j
+		{"hex", no_argument, nullptr, 'x'},
+		{"viges", no_argument, nullptr, VIGES_OPTION}, // k
 		// {"base36", no_argument, NULL, BASE36_OPTION}, // q
-		{"roman", no_argument, NULL, 'r'},
-		{"greek", no_argument, NULL, 'g'},
-		{"morse", no_argument, NULL, 'm'},
-		{"braille", no_argument, NULL, BRAILLE_OPTION}, // w
-		{"text", no_argument, NULL, 't'},
-		{"special", no_argument, NULL, SPECIAL_OPTION},
-		{"to", required_argument, NULL, TO_OPTION},
-		{"factors", no_argument, NULL, 'p'},
-		{"exponents", no_argument, NULL, 'h'},
-		{"divisors", no_argument, NULL, 'd'},
-		{"aliquot", no_argument, NULL, 's'},
-		{"prime", no_argument, NULL, 'n'},
-		{"all", no_argument, NULL, 'a'},
-		{"float", no_argument, NULL, 'f'},
-		{"fracts", no_argument, NULL, 'c'},
-		{"ascii", no_argument, NULL, ASCII_OPTION}, // y
-		{"unicode", no_argument, NULL, 'u'},
-		{"lower", no_argument, NULL, 'l'},
-		{"upper", no_argument, NULL, UPPER_OPTION}, // z
-		{"help", no_argument, NULL, GETOPT_HELP_CHAR},
-		{"version", no_argument, NULL, GETOPT_VERSION_CHAR},
-		{NULL, 0, NULL, 0}};
+		{"roman", no_argument, nullptr, 'r'},
+		{"greek", no_argument, nullptr, 'g'},
+		{"morse", no_argument, nullptr, 'm'},
+		{"braille", no_argument, nullptr, BRAILLE_OPTION}, // w
+		{"text", no_argument, nullptr, 't'},
+		{"special", no_argument, nullptr, SPECIAL_OPTION},
+		{"to", required_argument, nullptr, TO_OPTION},
+		{"factors", no_argument, nullptr, 'p'},
+		{"exponents", no_argument, nullptr, 'h'},
+		{"divisors", no_argument, nullptr, 'd'},
+		{"aliquot", no_argument, nullptr, 's'},
+		{"prime", no_argument, nullptr, 'n'},
+		{"all", no_argument, nullptr, 'a'},
+		{"float", no_argument, nullptr, 'f'},
+		{"fracts", no_argument, nullptr, 'c'},
+		{"ascii", no_argument, nullptr, ASCII_OPTION}, // y
+		{"unicode", no_argument, nullptr, 'u'},
+		{"lower", no_argument, nullptr, 'l'},
+		{"upper", no_argument, nullptr, UPPER_OPTION}, // z
+		{"help", no_argument, nullptr, GETOPT_HELP_CHAR},
+		{"version", no_argument, nullptr, GETOPT_VERSION_CHAR},
+		{nullptr, 0, nullptr, 0}};
 
 	int option_index = 0;
 	int c = 0;
@@ -1438,7 +1435,7 @@ int main(int argc, char *argv[])
 			tobase = 6;
 			break;
 		case FROM_BASE_OPTION:
-			frombase = atoi(optarg);
+			frombase = strtol(optarg, nullptr, 0);
 			if (frombase < 2 or frombase > 36)
 			{
 				cerr << "Error: <BASE> must be 2 - 36.\n";
@@ -1446,7 +1443,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'b':
-			tobase = atoi(optarg);
+			tobase = strtol(optarg, nullptr, 0);
 			if (tobase < 2 or tobase > 36)
 			{
 				cerr << "Error: <BASE> must be 2 - 36.\n";
@@ -1479,7 +1476,7 @@ int main(int argc, char *argv[])
 		// break;
 		case TO_OPTION:
 			arg = c;
-			scale_to = XARGMATCH("--to", optarg, scale_to_args, (sizeof scale_to_args / sizeof scale_to_args[0]), scale_to_types);
+			scale_to = xargmatch("--to", optarg, scale_to_args, (sizeof scale_to_args / sizeof scale_to_args[0]), scale_to_types);
 			break;
 		case 'u':
 			unicode = true;
@@ -1514,7 +1511,7 @@ int main(int argc, char *argv[])
 	{
 		if (arg == 'c')
 		{
-			cerr << "Error: Option not available for integer numbers.\n";
+			cerr << "Usage: Option not available for integer numbers.\n";
 			return 1;
 		}
 	}
@@ -1522,20 +1519,20 @@ int main(int argc, char *argv[])
 	{
 		if (frombase or tobase or arg == 'r' or arg == 'g' or arg == 'm' or arg == BRAILLE_OPTION or arg == 't' or arg == 'p' or arg == 'd' or arg == 's' or arg == 'n')
 		{
-			cerr << "Error: Option not available for floating point numbers.\n";
+			cerr << "Usage: Option not available for floating point numbers.\n";
 			return 1;
 		}
 	}
 
 	if (special and arg != 'a' and arg != 't')
 	{
-		cerr << "Error: --special is only available for integer numbers with --all and --text\n";
+		cerr << "Usage: --special is only available for integer numbers with --all and --text\n";
 		return 1;
 	}
 
 	if (print_exponents and arg != 'a' and arg != 'p')
 	{
-		cerr << "Error: --exponents is only available for integer numbers with --all and --factors\n";
+		cerr << "Usage: --exponents is only available for integer numbers with --all and --factors\n";
 		return 1;
 	}
 
