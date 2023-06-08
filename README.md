@@ -3,7 +3,7 @@
 
 # Numbers Tool
 
-Outputs numbers in various representations
+Command-line tool to output numbers in various representations
 
 Copyright © 2019 Teal Dulcet
 
@@ -37,7 +37,7 @@ It is designed as an extension to the existing [factor](https://www.gnu.org/soft
 
 Requires support for C++11 and [GNU Coreutils](https://www.gnu.org/software/coreutils/), which is included with most Linux distributions.
 
-Support for arbitrary-precision integers requires the [GNU Multiple Precision](https://gmplib.org/) (GMP) library. On Ubuntu and Debian, run `sudo apt-get update` and `sudo apt-get install libgmp3-dev`.
+Support for arbitrary-precision integers requires the [GNU Multiple Precision](https://gmplib.org/) (GMP) library. On Ubuntu and Debian, run `sudo apt-get update` and `sudo apt-get install libgmp-dev`.
 
 Compile without GMP:
 * GCC: `g++ -Wall -g -O3 -flto numbers.cpp -o numbers`

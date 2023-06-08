@@ -4,7 +4,7 @@
 
 // Support for arbitrary-precision integers requires the GNU Multiple Precision (GMP) library
 // sudo apt-get update
-// sudo apt-get install libgmp3-dev
+// sudo apt-get install libgmp-dev
 
 // Compile without GMP: g++ -Wall -g -O3 -flto numbers.cpp -o numbers
 
@@ -839,7 +839,7 @@ string outputprime(const T &number, const bool all = false)
 }
 
 // Convert fractions and constants to Unicode characters
-// Adapted from: https://github.com/tdulcet/Tables-and-Graphs/blob/master/graphs.hpp
+// Adapted from: https://github.com/tdulcet/Table-and-Graph-Libs/blob/master/graphs.hpp
 string outputfraction(const long double number)
 {
 	bool output = false;

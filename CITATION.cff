@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+title: Numbers Tool
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Teal
+    family-names: Dulcet
+    orcid: 'https://orcid.org/0000-0001-7950-9915'
+repository-code: 'https://github.com/tdulcet/Numbers-Tool'
+abstract: >-
+  A Linux command-line tool to output numbers in various
+  representations. Designed as an extension to the existing
+  factor and numfmt commands from GNU Coreutils.
+license: GPL-3.0
