@@ -1,19 +1,21 @@
 // Teal Dulcet
 
-// Requires GNU Coreutils
+// Requires support for 128-bit integers (the __int128/__int128_t type).
 
 // Support for arbitrary-precision integers requires the GNU Multiple Precision (GMP) library
 // sudo apt-get update
 // sudo apt-get install libgmp-dev
 
-// Compile without GMP: g++ -Wall -g -O3 -flto numbers.cpp -o numbers
+// Compile without GMP: g++ -std=gnu++17 -Wall -g -O3 -flto -march=native numbers.cpp -o numbers
 
-// Compile with GMP: g++ -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp
+// Compile with GMP: g++ -std=gnu++17 -Wall -g -O3 -flto -march=native numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp
 
 // Run: ./numbers [OPTION(S)]... [NUMBER(S)]...
 // If any of the NUMBERS are negative, the first must be preceded by a --.
 
-// On Linux distributions with GNU Coreutils older than 9.0, including Ubuntu (https://bugs.launchpad.net/ubuntu/+source/coreutils/+bug/696618) and Debian (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=608832), the factor command (part of GNU Coreutils) is built without arbitrary-precision/bignum support. If this is the case on your system and you are compiling this program with GMP, you will also need to build the factor command with GMP.
+// Optionally configure the program to use an external factor command instead of the builtin prime factorization functionality. This may be faster when factoring some very large numbers, but slower when factoring large ranges of numbers. Just set the FACTOR define below to the factor command path, for example: "/usr/bin/factor". Alternatively, add the -DFACTOR='"<path>"' option when comping the program, for example -DFACTOR='"/usr/bin/factor"'.
+
+// On Linux distributions with GNU Coreutils older than 9.0, including Ubuntu (https://bugs.launchpad.net/ubuntu/+source/coreutils/+bug/696618) and Debian (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=608832), the factor command (part of GNU Coreutils) is built without arbitrary-precision/bignum support. If this is the case on your system and you are compiling this program with GMP, you would also need to build the factor command with GMP.
 
 // Requires Make, the GNU C compiler, Autoconf and Automake
 // sudo apt-get install build-essential autoconf autopoint texinfo bison gperf
@@ -53,8 +55,6 @@
 	Copy factor command to starting directory
 	cp ./target/release/factor "$DIRNAME/" */
 
-// Change the FACTOR variable below to the new factor commands location, for example: "./factor"
-
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -63,13 +63,13 @@
 #include <climits>
 #include <cfloat>
 #include <limits>
-#include <cstdio>
 #include <clocale>
 #include <vector>
 #include <numeric>
 #include <algorithm>
 #include <cinttypes>
 #include <regex>
+#include <bit>
 #include <getopt.h>
 #if HAVE_GMP
 #include <gmpxx.h>
@@ -78,10 +78,11 @@
 using namespace std;
 
 // factor command
-const char *const FACTOR = "factor";
+// #define FACTOR "factor"
 
 enum
 {
+	// DEV_DEBUG_OPTION = CHAR_MAX + 1,
 	TO_OPTION = CHAR_MAX + 1,
 	FROM_BASE_OPTION,
 	BINARY_OPTION,
@@ -112,7 +113,7 @@ const char *const scale_to_args[] = {"none", "si", "iec", "iec-i"};
 
 enum scale_type const scale_to_types[] = {scale_none, scale_SI, scale_IEC, scale_IEC_I};
 
-const char *const suffix_power_char[] = {"", "K", "M", "G", "T", "P", "E", "Z", "Y"};
+const char *const suffix_power_char[] = {"", "K", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q"};
 
 const char *const roman[][13] = {
 	{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}, // ASCII
@@ -128,15 +129,18 @@ const char *const greek[][36] = {
 
 const short greekvalues[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000};
 
-const char *const ONES[] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
-const char *const TEENS[] = {"", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"};
-const char *const TENS[] = {"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"};
+const string ONES[] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
+const string TEENS[] = {"", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"};
+const string TENS[] = {"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"};
 // https://en.wikipedia.org/wiki/Names_of_large_numbers
-const char *const THOUSANDPOWERS[] = {"", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion", "undecillion"};
+const string THOUSANDPOWERS[] = {"", "thousand", "m", "b", "tr", "quadr", "quint", "sext", "sept", "oct", "non"};
+const string THOUSANDONES[] = {"", "un", "duo", "tre", "quattuor", "quin", "se", "septe", "octo", "nove"};
+const string THOUSANDTENS[] = {"", "dec", "vigint", "trigint", "quadragint", "quinquagint", "sexagint", "septuagint", "octogint", "nonagint"};
+const string THOUSANDHUNDREDS[] = {"", "cent", "ducent", "trecent", "quadringent", "quingent", "sescent", "septingent", "octingent", "nongent"};
 
-const char *const HEXONES[] = {ONES[0], ONES[1], ONES[2], ONES[3], ONES[4], ONES[5], ONES[6], ONES[7], ONES[8], ONES[9], "ann", "bet", "chris", "dot", "ernest", "frost"};
-const char *const HEXTEENS[] = {TEENS[0], TEENS[1], TEENS[2], TEENS[3], TEENS[4], TEENS[5], TEENS[6], TEENS[7], TEENS[8], TEENS[9], "annteen", "betteen", "christeen", "dotteen", "ernesteen", "frosteen"};
-const char *const HEXTENS[] = {TENS[0], TENS[1], TENS[2], TENS[3], TENS[4], TENS[5], TENS[6], TENS[7], TENS[8], TENS[9], "annty", "betty", "christy", "dotty", "ernesty", "frosty"};
+const string HEXONES[] = {ONES[0], ONES[1], ONES[2], ONES[3], ONES[4], ONES[5], ONES[6], ONES[7], ONES[8], ONES[9], "ann", "bet", "chris", "dot", "ernest", "frost"};
+const string HEXTEENS[] = {TEENS[0], TEENS[1], TEENS[2], TEENS[3], TEENS[4], TEENS[5], TEENS[6], TEENS[7], TEENS[8], TEENS[9], "annteen", "betteen", "christeen", "dotteen", "ernesteen", "frosteen"};
+const string HEXTENS[] = {TENS[0], TENS[1], TENS[2], TENS[3], TENS[4], TENS[5], TENS[6], TENS[7], TENS[8], TENS[9], "annty", "betty", "christy", "dotty", "ernesty", "frosty"};
 
 const char *const morsecode[][11] = {
 	// 0-9, -
@@ -162,11 +166,282 @@ const regex re("^.*: ");
 const char *const constants[] = {"π", "e"};
 const long double constantvalues[] = {M_PI, M_E};
 
+constexpr unsigned __int128 UINT128_MAX = numeric_limits<unsigned __int128>::max();
+constexpr __int128 INT128_MAX = numeric_limits<__int128>::max();
+constexpr __int128 INT128_MIN = numeric_limits<__int128>::min();
+
 const long double max_bit = scalbn(1.0L, LDBL_MANT_DIG - 1);
 const long double MAX = max_bit + (max_bit - 1);
 
+/* debugging for developers.  Enables devmsg().
+   This flag is used only in the GMP code.  */
+bool dev_debug = false;
+
+/* Prove primality or run probabilistic tests.  */
+bool flag_prove_primality = true;
+
+/* Number of Miller-Rabin tests to run when not proving primality.  */
+constexpr int MR_REPS = 25;
+
 template <typename T>
-using T2 = typename conditional<is_integral<T>::value, make_unsigned<T>, common_type<T>>::type::type;
+using T2 = typename conditional<is_integral_v<T>, make_unsigned<T>, common_type<T>>::type::type;
+
+#ifndef FACTOR
+template <size_t N>
+constexpr auto primes()
+{
+	constexpr size_t limit = !(N & 1) ? N - 1 : N;
+	constexpr size_t size = (limit - 1) / 2;
+	constexpr auto sieve = [&size]() constexpr -> auto
+	{
+		array<bool, size> sieve{};
+		// sieve.fill(true);
+		// bitset<size> sieve{};
+		// sieve.set();
+		for (auto &x : sieve)
+			x = true;
+
+		for (size_t i = 0; i * i <= size; ++i)
+		{
+			if (sieve[i])
+			{
+				const size_t p = 3 + 2 * i;
+
+				for (size_t j = (p * p - 3) / 2; j < size; j += p)
+					sieve[j] = false;
+			}
+		}
+
+		return sieve;
+	}();
+
+	// constexpr size_t nprimes = sieve.count();
+	constexpr size_t nprimes = [](const array<bool, size> &sieve) constexpr -> size_t
+	// constexpr size_t nprimes = [](const bitset<size> &sieve) constexpr -> size_t
+	{
+		size_t nprimes = 0;
+
+		for (const auto &x : sieve)
+		{
+			if (x)
+				++nprimes;
+		}
+
+		return nprimes;
+	}(sieve);
+	array<unsigned char, nprimes> primes{};
+	// array<unsigned __int128, nprimes> magic{};
+
+	size_t p = 2;
+	for (size_t i = 0, j = 0; i < size; ++i)
+	{
+		if (sieve[i])
+		{
+			const size_t ap = 3 + 2 * i;
+			primes[j] = ap - p;
+			// magic[j] = UINT128_MAX / ap + 1;
+			++j;
+			p = ap;
+		}
+	}
+
+	p = limit;
+	bool is_prime = false;
+	do
+	{
+		p += 2;
+		is_prime = true;
+		for (size_t i = 0, ap = 2; is_prime and ap * ap <= p; ap += primes[i], ++i)
+		{
+			// if (magic[i] * p < magic[i])
+			if (!(p % ap))
+			{
+				is_prime = false;
+				break;
+			}
+		}
+	} while (!is_prime);
+
+	// return tuple{primes, magic, p};
+	return tuple{primes, p};
+}
+
+// constexpr auto [primes_diff, FIRST_OMITTED_PRIME] = primes<1 << 16>(); // 2^16 = 65536
+// constexpr auto temp = primes<5000>();
+// constexpr auto temp = primes<50000>();
+constexpr auto temp = primes<1 << 16>(); // 2^16 = 65536
+// constexpr auto temp = primes<500000>();
+constexpr auto &primes_diff = get<0>(temp);
+constexpr auto &FIRST_OMITTED_PRIME = get<1>(temp);
+
+constexpr size_t PRIMES_PTAB_ENTRIES = size(primes_diff);
+// static_assert(PRIMES_PTAB_ENTRIES == 669 - 1);
+// static_assert(FIRST_OMITTED_PRIME == 5003); // 4999;
+// static_assert(PRIMES_PTAB_ENTRIES == 5133 - 1);
+// static_assert(FIRST_OMITTED_PRIME == 50021); // 49999
+static_assert(PRIMES_PTAB_ENTRIES == 6542 - 1);
+static_assert(FIRST_OMITTED_PRIME == 65537); // 65521
+// static_assert(PRIMES_PTAB_ENTRIES == 41538 - 1);
+// static_assert(FIRST_OMITTED_PRIME == 500009); // 499979
+
+#if HAVE_GMP
+template <typename T>
+mpz_class import(const T &value)
+{
+	mpz_class result;
+	mpz_import(result.get_mpz_t(), 1, -1, sizeof(value), 0, 0, &value);
+
+	return result;
+}
+
+template <typename T>
+T aexport(const mpz_class &value)
+{
+	T result;
+	mpz_export(&result, 0, -1, sizeof(result), 0, 0, value.get_mpz_t());
+
+	return result;
+}
+
+// const mpz_class aINT128_MAX = (mpz_class(1) << 127) - 1;
+const mpz_class aINT128_MAX = import(INT128_MAX);
+#endif
+#endif
+
+/* Number of bits in an uintmax_t.  */
+constexpr size_t W = sizeof(uintmax_t) * CHAR_BIT;
+
+/* Verify that uintmax_t does not have holes in its representation.  */
+static_assert(UINTMAX_MAX >> (W - 1) == 1);
+
+/* Number of bits in an unsigned __int128.  */
+constexpr size_t X = sizeof(unsigned __int128) * CHAR_BIT;
+
+/* Verify that unsigned __int128 does not have holes in its representation.  */
+static_assert(UINT128_MAX >> (X - 1) == 1);
+
+__int128 strtoi128(const char *nptr, char **endptr, int base)
+{
+	const char *s = nptr;
+	int c;
+	bool neg = false;
+
+	do
+	{
+		c = *s++;
+	} while (isspace(c));
+	if (c == '-')
+	{
+		neg = true;
+		c = *s++;
+	}
+	else if (c == '+')
+		c = *s++;
+	if ((base == 0 or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
+	{
+		c = s[1];
+		s += 2;
+		base = 16;
+	}
+	if (base == 0)
+		base = c == '0' ? 8 : 10;
+
+	unsigned __int128 cutoff = neg ? -(unsigned __int128)INT128_MIN : INT128_MAX;
+	const int cutlim = cutoff % base;
+	cutoff /= base;
+	unsigned __int128 acc;
+	int any;
+	for (acc = 0, any = 0;; c = *s++)
+	{
+		if (isdigit(c))
+			c -= '0';
+		else if (isalpha(c))
+			c -= isupper(c) ? 'A' - 10 : 'a' - 10;
+		else
+			break;
+		if (c >= base)
+			break;
+		if (any < 0 or acc > cutoff or (acc == cutoff and c > cutlim))
+			any = -1;
+		else
+		{
+			any = 1;
+			acc *= base;
+			acc += c;
+		}
+	}
+	if (any < 0)
+	{
+		acc = neg ? INT128_MIN : INT128_MAX;
+		errno = ERANGE;
+	}
+	else if (neg)
+		acc = -acc;
+	if (endptr != NULL)
+		*endptr = (char *)(any ? s - 1 : nptr);
+	return acc;
+}
+
+unsigned __int128 strtou128(const char *nptr, char **endptr, int base)
+{
+	const char *s = nptr;
+	int c;
+	bool neg = false;
+
+	do
+	{
+		c = *s++;
+	} while (isspace(c));
+	if (c == '-')
+	{
+		neg = true;
+		c = *s++;
+	}
+	else if (c == '+')
+		c = *s++;
+	if ((base == 0 or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
+	{
+		c = s[1];
+		s += 2;
+		base = 16;
+	}
+	if (base == 0)
+		base = c == '0' ? 8 : 10;
+
+	const unsigned __int128 cutoff = UINT128_MAX / base;
+	const int cutlim = UINT128_MAX % base;
+	unsigned __int128 acc;
+	int any;
+	for (acc = 0, any = 0;; c = *s++)
+	{
+		if (isdigit(c))
+			c -= '0';
+		else if (isalpha(c))
+			c -= isupper(c) ? 'A' - 10 : 'a' - 10;
+		else
+			break;
+		if (c >= base)
+			break;
+		if (any < 0 or acc > cutoff or (acc == cutoff and c > cutlim))
+			any = -1;
+		else
+		{
+			any = 1;
+			acc *= base;
+			acc += c;
+		}
+	}
+	if (any < 0)
+	{
+		acc = UINT128_MAX;
+		errno = ERANGE;
+	}
+	else if (neg)
+		acc = -acc;
+	if (endptr != NULL)
+		*endptr = (char *)(any ? s - 1 : nptr);
+	return acc;
+}
 
 // Check if the argument is in the argument list
 // Adapted from: https://github.com/coreutils/gnulib/blob/master/lib/argmatch.c
@@ -191,7 +466,7 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 {
 	ostringstream strm;
 
-	unsigned int x = 0;
+	unsigned x = 0;
 	long double val = number;
 	if (val >= -LDBL_MAX and val <= LDBL_MAX)
 	{
@@ -214,12 +489,12 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 		return strm.str();
 	}
 
-	if (x > 27 - 1)
+	if (x > 33 - 1)
 	{
 		if (all)
 			return "N/A";
 
-		cerr << "Error: Number too large to be printed: '" << number << "' (cannot handle numbers > 999Y)\n";
+		cerr << "Error: Number too large to be printed: '" << number << "' (cannot handle numbers > 999Q)\n";
 		return {};
 	}
 
@@ -238,7 +513,7 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 		break;
 	}
 
-	unsigned int power = 0;
+	unsigned power = 0;
 	if (number >= -LDBL_MAX and number <= LDBL_MAX)
 	{
 		while (abs(number) >= scale_base)
@@ -255,12 +530,12 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 
 	string str;
 
-	if (number != 0 and anumber < 1000 and power > 0)
+	if (number and anumber < 1000 and power > 0)
 	{
 		strm << setprecision(LDBL_DIG) << number;
 		str = strm.str();
 
-		const unsigned int length = 5 + (number < 0 ? 1 : 0);
+		const unsigned length = 5 + (number < 0 ? 1 : 0);
 		if (str.length() > length)
 		{
 			const int prec = anumber < 10 ? 3 : anumber < 100 ? 2
@@ -276,7 +551,7 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 		str = strm.str();
 	}
 
-	str += power < 9 ? suffix_power_char[power] : "(error)";
+	str += power < size(suffix_power_char) ? suffix_power_char[power] : "(error)";
 
 	if (scale == scale_IEC_I and power > 0)
 		str += "i";
@@ -319,10 +594,11 @@ string outputbase(const T number, const short base = 10, const bool uppercase = 
 }
 
 // Output numbers 1 - 3999 as Roman numerals
-string outputroman(const intmax_t number, const bool unicode, const bool all = false)
+template <typename T>
+string outputroman(const T number, const bool unicode, const bool all = false)
 {
-	// uintmax_t anumber = abs(number);
-	uintmax_t anumber = number;
+	// T2<T> anumber = abs(number);
+	T2<T> anumber = number;
 	anumber = number < 0 ? -anumber : anumber;
 
 	if (anumber < 1 or anumber > 3999)
@@ -339,9 +615,9 @@ string outputroman(const intmax_t number, const bool unicode, const bool all = f
 	if (number < 0)
 		str = '-';
 
-	for (int i = (sizeof romanvalues / sizeof romanvalues[0]) - 1; anumber > 0; --i)
+	for (int i = size(romanvalues) - 1; anumber > 0; --i)
 	{
-		uintmax_t div = anumber / romanvalues[i];
+		T2<T> div = anumber / romanvalues[i];
 		if (div)
 		{
 			anumber %= romanvalues[i];
@@ -354,10 +630,11 @@ string outputroman(const intmax_t number, const bool unicode, const bool all = f
 }
 
 // Output numbers 1 - 9999 as Greek numerals
-string outputgreek(const intmax_t number, const bool uppercase, const bool all = false)
+template <typename T>
+string outputgreek(const T number, const bool uppercase, const bool all = false)
 {
-	// uintmax_t anumber = abs(number);
-	uintmax_t anumber = number;
+	// T2<T> anumber = abs(number);
+	T2<T> anumber = number;
 	anumber = number < 0 ? -anumber : anumber;
 
 	if (anumber < 1 or anumber > 9999)
@@ -374,7 +651,7 @@ string outputgreek(const intmax_t number, const bool uppercase, const bool all =
 	if (number < 0)
 		str = '-';
 
-	for (int i = (sizeof greekvalues / sizeof greekvalues[0]) - 1; anumber > 0; --i)
+	for (int i = size(greekvalues) - 1; anumber > 0; --i)
 	{
 		if (anumber / greekvalues[i])
 		{
@@ -382,7 +659,7 @@ string outputgreek(const intmax_t number, const bool uppercase, const bool all =
 			if (greekvalues[i] >= 1000)
 				str += "͵"; // lower left keraia
 			str += greek[uppercase][i];
-			if (greekvalues[i] < 1000 and anumber == 0)
+			if (greekvalues[i] < 1000 and !anumber)
 				str += "ʹ"; // keraia
 		}
 	}
@@ -394,14 +671,19 @@ string outputgreek(const intmax_t number, const bool uppercase, const bool all =
 template <typename T>
 string tostring(T arg)
 {
-	ostringstream strm;
-	strm << arg;
-	return strm.str();
+	if constexpr (is_same_v<T, __int128> or is_same_v<T, unsigned __int128>)
+		return outputbase(arg);
+	else
+	{
+		ostringstream strm;
+		strm << arg;
+		return strm.str();
+	}
 }
 
 // Output number as Morse code
 template <typename T>
-string outputmorsecode(const T &number, const unsigned int style)
+string outputmorsecode(const T &number, const unsigned style)
 {
 	// const T2<T> n = abs(number);
 	T2<T> n = number;
@@ -418,7 +700,7 @@ string outputmorsecode(const T &number, const unsigned int style)
 
 	for (size_t i = 0; i < text.length(); ++i)
 	{
-		if (i > 0)
+		if (i)
 			str += gap;
 		str += morsecode[style][text[i] - '0'];
 	}
@@ -474,12 +756,86 @@ string outputexponent(const intmax_t number)
 	return str;
 }
 
+string thousandpower(size_t power)
+{
+	string str;
+
+	if (power < size(THOUSANDPOWERS))
+	{
+		str += THOUSANDPOWERS[power];
+		if (power > 1)
+			str += "illion";
+		return str;
+	}
+
+	--power;
+
+	const unsigned scale = 1000;
+	while (power > 0)
+	{
+		string astr;
+
+		unsigned m = power % scale;
+		power /= scale;
+		if (m)
+		{
+			const unsigned h = m / 100;
+			const unsigned t = (m % 100) / 10;
+			const unsigned u = m % 10;
+
+			if (u)
+				astr += m >= 10 ? THOUSANDONES[u] : THOUSANDPOWERS[u + 1] + 'i';
+			if (u and t)
+			{
+				if ((u == 3 or u == 6) and t >= 2 and t <= 5)
+					astr += 's';
+				else if (u == 7 or u == 9)
+				{
+					if (t == 1 or (t >= 3 and t <= 7))
+						astr += 'n';
+					else if (t == 2 or t == 8)
+						astr += 'm';
+				}
+				else if (u == 6 and t == 8)
+					astr += 'x';
+			}
+			if (t)
+				astr += THOUSANDTENS[t] + (t >= 3 and h ? 'a' : 'i');
+			else if (u and h)
+			{
+				if ((u == 3 or u == 6) and h >= 3 and h <= 5)
+					astr += 's';
+				else if (u == 7 or u == 9)
+				{
+					if (h >= 1 and h <= 7)
+						astr += 'n';
+					else if (h == 8)
+						astr += 'm';
+				}
+				else if (u == 6 and (h == 1 or h == 8))
+					astr += 'x';
+			}
+			if (h)
+				astr += THOUSANDHUNDREDS[h] + 'i';
+			astr += "lli";
+		}
+		else
+			astr = "nilli";
+
+		str = astr + str;
+	}
+
+	str += "on";
+	return str;
+}
+
 // Output number as text
 // Adapted from: https://rosettacode.org/wiki/Number_names
-string outputtext(const intmax_t number, const bool special)
+template <typename T>
+string outputtext(const T &number, const bool special)
 {
-	// uintmax_t n = abs(number);
-	uintmax_t n = number;
+	// T2<T> n = abs(number);
+	T2<T> n = number;
 	n = number < 0 ? -n : n;
 
 	string str;
@@ -506,7 +862,7 @@ string outputtext(const intmax_t number, const bool special)
 		}
 		if (n % 12 == 0)
 		{
-			intmax_t temp = n / 12;
+			T temp = n / 12;
 			if (temp >= 1 and temp < 12)
 			{
 				if (temp > 1)
@@ -536,27 +892,33 @@ string outputtext(const intmax_t number, const bool special)
 	}
 	if (n < 10)
 	{
-		str += ONES[n];
+		if constexpr (!is_integral_v<T>)
+			str += ONES[n.get_ui()];
+		else
+			str += ONES[n];
 		return str;
 	}
 
 	string astr;
 
-	const uintmax_t scale = 1000;
-	for (uintmax_t index = 0; n > 0; ++index)
+	const unsigned scale = 1000;
+	for (size_t index = 0; n > 0; ++index)
 	{
-		uintmax_t h = n % scale;
+		unsigned h;
+		if constexpr (!is_integral_v<T>)
+			h = mpz_class(n % scale).get_ui();
+		else
+			h = n % scale;
 		n /= scale;
 		if (h)
 		{
 			string aastr;
 			if (n)
 				// aastr += ' ';
-				aastr += astr.empty() and (h < 100 or h % 100 == 0) ? " and " : ", ";
+				aastr += astr.empty() and (h < 100 or !(h % 100)) ? " and " : ", ";
 			if (h >= 100)
 			{
-				aastr += ONES[h / 100];
-				aastr += " hundred";
+				aastr += ONES[h / 100] + " hundred";
 				h %= 100;
 				if (h)
 					// aastr += ' ';
@@ -574,10 +936,7 @@ string outputtext(const intmax_t number, const bool special)
 			else if (h < 10 and h > 0)
 				aastr += ONES[h];
 			if (index)
-			{
-				aastr += ' ';
-				aastr += THOUSANDPOWERS[index];
-			}
+				aastr += ' ' + thousandpower(index);
 			astr = aastr + astr;
 		}
 	}
@@ -587,18 +946,23 @@ string outputtext(const intmax_t number, const bool special)
 }
 
 // Output hexadecimal number as text
-string outputhextext(const intmax_t number)
+template <typename T>
+string outputhextext(const T &number)
 {
-	// uintmax_t n = abs(number);
-	uintmax_t n = number;
+	// T2<T> n = abs(number);
+	T2<T> n = number;
 	n = number < 0 ? -n : n;
 
 	string str;
 
-	const uintmax_t scale = 0x100;
+	const unsigned scale = 0x100;
 	do
 	{
-		uintmax_t h = n % scale;
+		unsigned h;
+		if constexpr (!is_integral_v<T>)
+			h = mpz_class(n % scale).get_ui();
+		else
+			h = n % scale;
 		n /= scale;
 		string astr;
 		if (n)
@@ -652,9 +1016,462 @@ int exec(const char *const cmd, string &result)
 	return pclose(pipe);
 }
 
+#ifndef FACTOR
+template <typename T>
+constexpr T diff(const T a, const T b)
+{
+	return a >= b ? a - b : b - a;
+}
+
+template <typename T>
+constexpr T mulm(T a, T b, const T mod)
+{
+	static_assert(is_integral_v<T>, "");
+	// assert(mod>0);
+	// assert(a<mod);
+	// assert(b<mod);
+	T res = 0;
+
+	for (; b != 0; b >>= 1)
+	{
+		if ((b & 1) != 0)
+			res = (res + a) % mod;
+
+		a = (a << 1) % mod;
+	}
+
+	return res;
+}
+
+template <typename T>
+constexpr T powm(T base, T exp, const T mod)
+{
+	static_assert(is_integral_v<T>, "");
+	// assert(mod>1);
+	T res = 1;
+
+	for (; exp != 0; exp >>= 1)
+	{
+		if ((exp & 1) != 0)
+			// res = (res * base) % mod;
+			res = mulm(res, base, mod);
+
+		// base = (base * base) % mod;
+		base = mulm(base, base, mod);
+	}
+
+	return res;
+}
+
+template <typename T1, typename T2>
+void factor(T1 &t, map<T2, size_t> &factors);
+
+template <typename T1, typename T2>
+void factor_using_division(T1 &t, map<T2, size_t> &factors)
+{
+	if (dev_debug)
+		cerr << "[trial division] ";
+
+	size_t p = 0;
+#if HAVE_GMP
+	if constexpr (!is_integral_v<T1>)
+	{
+		p = mpz_scan1(t.get_mpz_t(), 0);
+		mpz_fdiv_q_2exp(t.get_mpz_t(), t.get_mpz_t(), p);
+	}
+	else
+#endif
+	{
+		// p = __builtin_ctz(t);
+		p = __countr_zero(t);
+		t >>= p;
+	}
+	if (p)
+		factors[2] += p;
+
+	p = 3;
+	for (size_t i = 1; i <= PRIMES_PTAB_ENTRIES;)
+	{
+		if (t % p != 0)
+		{
+			if (i < PRIMES_PTAB_ENTRIES)
+				p += primes_diff[i];
+			++i;
+			if (t < p * p)
+				break;
+		}
+		else
+		{
+			// mpz_tdiv_q_ui(t.get_mpz_t(), t.get_mpz_t(), p);
+			t /= p;
+			++factors[p];
+		}
+	}
+}
+
+template <typename T>
+bool millerrabin(const T &n, const T &nm1, const T &x, T &y, const T &q, const size_t k)
+{
+#if HAVE_GMP
+	if constexpr (!is_integral_v<T>)
+		mpz_powm(y.get_mpz_t(), x.get_mpz_t(), q.get_mpz_t(), n.get_mpz_t());
+	else
+#endif
+		y = powm(x, q, n);
+
+	if (y == 1 or y == nm1)
+		return true;
+
+	for (size_t i = 1; i < k; ++i)
+	{
+#if HAVE_GMP
+		if constexpr (!is_integral_v<T>)
+			mpz_powm_ui(y.get_mpz_t(), y.get_mpz_t(), 2, n.get_mpz_t());
+		else
+#endif
+			// y = powm(y, T(2), n);
+			y = mulm(y, y, n);
+
+		if (y == nm1)
+			return true;
+		if (y == 1)
+			return false;
+	}
+	return false;
+}
+
+template <typename T>
+bool prime_p(const T &n)
+{
+	bool is_prime;
+	T tmp = 0;
+	map<T, size_t> factors;
+
+	if constexpr (!is_integral_v<T>)
+	{
+		// n.fits_ulong_p()
+		if (n.fits_slong_p())
+		{
+			const unsigned long an = n.get_ui();
+			return prime_p(an);
+		}
+#if HAVE_GMP
+		if constexpr (INTMAX_MAX > LONG_MAX and n <= INTMAX_MAX)
+		{
+			const uintmax_t an = aexport<uintmax_t>(n);
+			return prime_p(an);
+		}
+		if (n <= aINT128_MAX)
+		{
+			const unsigned __int128 an = aexport<unsigned __int128>(n);
+			return prime_p(an);
+		}
+#endif
+	}
+	else if constexpr (is_same_v<T, unsigned __int128>)
+	{
+		if (n <= INTMAX_MAX)
+		{
+			const uintmax_t an = n;
+			return prime_p(an);
+		}
+	}
+
+	if (n <= 1)
+		return false;
+
+	/* We have already casted out small primes.  */
+	if (n < FIRST_OMITTED_PRIME * FIRST_OMITTED_PRIME)
+		return true;
+
+	/* Precomputation for Miller-Rabin.  */
+	const T nm1 = n - 1;
+
+	/* Find q and k, where q is odd and n = 1 + 2**k * q.  */
+	size_t k = 0;
+	T q = nm1;
+#if HAVE_GMP
+	if constexpr (!is_integral_v<T>)
+	{
+		k = mpz_scan1(nm1.get_mpz_t(), 0);
+		mpz_tdiv_q_2exp(q.get_mpz_t(), nm1.get_mpz_t(), k);
+	}
+	else
+#endif
+	{
+		// k = __builtin_ctz(q);
+		k = __countr_zero(q);
+		q >>= k;
+	}
+
+	T a = 2;
+
+	/* Perform a Miller-Rabin test, finds most composites quickly.  */
+	if (!millerrabin(n, nm1, a, tmp, q, k))
+		return false;
+
+	if (flag_prove_primality)
+	{
+		/* Factor n-1 for Lucas.  */
+		tmp = nm1;
+		if constexpr (!is_integral_v<T>)
+		{
+			// tmp.fits_ulong_p()
+			if (tmp.fits_slong_p())
+			{
+				unsigned long atmp = tmp.get_ui();
+				factor(atmp, factors);
+				tmp = atmp;
+			}
+#if HAVE_GMP
+			else if constexpr (INTMAX_MAX > LONG_MAX and tmp <= INTMAX_MAX)
+			{
+				uintmax_t atmp = aexport<uintmax_t>(tmp);
+				factor(atmp, factors);
+				tmp = import(atmp);
+			}
+			else if (tmp <= aINT128_MAX)
+			{
+				unsigned __int128 atmp = aexport<unsigned __int128>(tmp);
+				factor(atmp, factors);
+				tmp = import(atmp);
+			}
+#endif
+			else
+				factor(tmp, factors);
+		}
+		else if constexpr (is_same_v<T, unsigned __int128>)
+		{
+			if (tmp <= INTMAX_MAX)
+			{
+				uintmax_t atmp = tmp;
+				factor(atmp, factors);
+				tmp = atmp;
+			}
+			else
+				factor(tmp, factors);
+		}
+		else
+			factor(tmp, factors);
+	}
+
+	/* Loop until Lucas proves our number prime, or Miller-Rabin proves our
+	   number composite.  */
+	for (size_t r = 0; r < PRIMES_PTAB_ENTRIES; ++r)
+	{
+		if (flag_prove_primality)
+		{
+			is_prime = true;
+			for (const auto &[p, e] : factors)
+			{
+#if HAVE_GMP
+				if constexpr (!is_integral_v<T>)
+					mpz_powm(tmp.get_mpz_t(), a.get_mpz_t(), T(nm1 / p).get_mpz_t(), n.get_mpz_t());
+				else
+#endif
+					tmp = powm(a, nm1 / p, n);
+				is_prime = tmp != 1;
+
+				if (!is_prime)
+					break;
+			}
+		}
+		else
+		{
+			/* After enough Miller-Rabin runs, be content.  */
+			is_prime = (r == MR_REPS - 1);
+		}
+
+		if (is_prime)
+			return is_prime;
+
+		a += primes_diff[r]; /* Establish new base.  */
+
+		if (!millerrabin(n, nm1, a, tmp, q, k))
+			return false;
+	}
+
+	cerr << "Lucas prime test failure.  This should not happen\n";
+	abort();
+}
+
+template <typename T1, typename T2>
+void factor_using_pollard_rho(T1 &n, size_t a, map<T2, size_t> &factors)
+{
+	T1 x = 2, z = 2, y = 2, P = 1;
+	T1 t = 0;
+
+	if (dev_debug)
+		cerr << "[pollard-rho (" << a << ")] ";
+
+	unsigned long long k = 1;
+	unsigned long long l = 1;
+
+	while (n != 1)
+	{
+		// assert(a < n);
+		while (true)
+		{
+			bool factor_found = false;
+			do
+			{
+				if constexpr (!is_integral_v<T1>)
+					x = ((x * x) % n) + a;
+				else
+					x = mulm(x, x, n) + a;
+
+				if constexpr (!is_integral_v<T1>)
+					P = (P * (z - x)) % n;
+				else
+					P = mulm(P, diff(z, x), n);
+
+				if (k % 32 == 1)
+				{
+					if (gcd(P, n) != 1)
+					{
+						factor_found = true;
+						break;
+					}
+					y = x;
+				}
+			} while (--k != 0);
+
+			if (factor_found)
+				break;
+
+			z = x;
+			k = l;
+			l *= 2;
+			for (unsigned long long i = 0; i < k; ++i)
+			{
+				if constexpr (!is_integral_v<T1>)
+					x = ((x * x) % n) + a;
+				else
+					x = mulm(x, x, n) + a;
+			}
+
+			y = x;
+		}
+
+		do
+		{
+			if constexpr (!is_integral_v<T1>)
+				y = ((y * y) % n) + a;
+			else
+				y = mulm(y, y, n) + a;
+
+			if constexpr (!is_integral_v<T1>)
+				t = gcd(z - y, n);
+			else
+				t = gcd(diff(z, y), n);
+		} while (t == 1);
+
+		n /= t; /* divide by t, before t is overwritten */
+
+		if (!prime_p(t))
+		{
+			if (dev_debug)
+				cerr << "[composite factor--restarting pollard-rho] ";
+			if constexpr (!is_integral_v<T1>)
+			{
+				// t.fits_ulong_p()
+				if (t.fits_slong_p())
+				{
+					unsigned long at = t.get_ui();
+					factor_using_pollard_rho(at, a + 1, factors);
+					t = at;
+				}
+#if HAVE_GMP
+				else if constexpr (INTMAX_MAX > LONG_MAX and t <= INTMAX_MAX)
+				{
+					uintmax_t at = aexport<uintmax_t>(t);
+					factor_using_pollard_rho(at, a + 1, factors);
+					t = import(at);
+				}
+				else if (t <= aINT128_MAX)
+				{
+					unsigned __int128 at = aexport<unsigned __int128>(t);
+					factor_using_pollard_rho(at, a + 1, factors);
+					t = import(at);
+				}
+#endif
+				else
+					factor_using_pollard_rho(t, a + 1, factors);
+			}
+			else if constexpr (is_same_v<T1, unsigned __int128>)
+			{
+				if (t <= INTMAX_MAX)
+				{
+					uintmax_t at = t;
+					factor_using_pollard_rho(at, a + 1, factors);
+					t = at;
+				}
+				else
+					factor_using_pollard_rho(t, a + 1, factors);
+			}
+			else
+				factor_using_pollard_rho(t, a + 1, factors);
+		}
+		else
+		{
+#if HAVE_GMP
+			if constexpr (!is_integral_v<T2> and is_same_v<T1, unsigned __int128>)
+				++factors[import(t)];
+			else
+#endif
+				++factors[t];
+		}
+
+		if (prime_p(n))
+		{
+#if HAVE_GMP
+			if constexpr (!is_integral_v<T2> and is_same_v<T1, unsigned __int128>)
+				++factors[import(n)];
+			else
+#endif
+				++factors[n];
+			break;
+		}
+
+		x %= n;
+		z %= n;
+		y %= n;
+	}
+}
+
+/* Use Pollard-rho to compute the prime factors of
+   arbitrary-precision T, and put the results in FACTORS.  */
+template <typename T1, typename T2>
+void factor(T1 &t, map<T2, size_t> &factors)
+{
+	if (t != 0)
+	{
+		// assert(t >= 2);
+		factor_using_division(t, factors);
+
+		if (t != 1)
+		{
+			// assert(t >= 2);
+			if (dev_debug)
+				cerr << "[is number prime?] ";
+			if (prime_p(t))
+			{
+#if HAVE_GMP
+				if constexpr (!is_integral_v<T2> and is_same_v<T1, unsigned __int128>)
+					++factors[import(t)];
+				else
+#endif
+					++factors[t];
+			}
+			else
+				factor_using_pollard_rho(t, 1, factors);
+		}
+	}
+}
+#else
 // Execute factor command to get prime factors of number
 template <typename T>
-map<T2<T>, size_t> factor(const T &number)
+void factor(const T &number, map<T2<T>, size_t> &counts)
 {
 	const string cmd = string(FACTOR) + R"( ")" + tostring(number) + R"(" 2>&1)";
 
@@ -662,20 +1479,29 @@ map<T2<T>, size_t> factor(const T &number)
 	if (exec(cmd.c_str(), result))
 	{
 		cerr << "Error: " << result /*  << "\n" */;
-		return {};
 	}
 
 	result = regex_replace(result, re, "");
 
 	istringstream strm(result);
-	map<T2<T>, size_t> counts;
 
 	T2<T> temp;
-	while (strm >> temp)
-		++counts[temp];
-
-	return counts;
+	if constexpr (is_same_v<T2<T>, unsigned __int128>)
+	{
+		string token;
+		while (strm >> token)
+		{
+			temp = strtou128(token.c_str(), NULL, 10);
+			++counts[temp];
+		}
+	}
+	else
+	{
+		while (strm >> temp)
+			++counts[temp];
+	}
 }
+#endif
 
 // Output prime factors of number
 template <typename T>
@@ -691,28 +1517,30 @@ string outputfactors(const T &number, const bool print_exponents, const bool uni
 	}
 
 	// const T2<T> n = abs(number);
-	const T2<T> &n = number;
+	T2<T> n = number;
 	// n = number < 0 ? -n : n;
 
 	ostringstream strm;
-	map<T2<T>, size_t> counts = factor(n);
+	map<T2<T>, size_t> counts;
+	factor(n, counts);
 
-	for (const auto &acount : counts)
+	for (const auto &[prime, exponent] : counts)
 	{
-		const T2<T> &prime = acount.first;
-		const size_t exponent = acount.second;
 		for (size_t j = 0; j < exponent; ++j)
 		{
 			if (strm.tellp())
 				strm << ' ' << (unicode ? "×" : "*") << ' ';
 			// strm << ' ';
-			strm << prime;
+			if constexpr (is_same_v<T2<T>, unsigned __int128>)
+				strm << outputbase(prime);
+			else
+				strm << prime;
 			if (print_exponents and exponent > 1)
 			{
 				if (unicode)
 					strm << outputexponent(exponent);
 				else
-					strm << "^" << exponent;
+					strm << '^' << exponent;
 				break;
 			}
 		}
@@ -723,15 +1551,14 @@ string outputfactors(const T &number, const bool print_exponents, const bool uni
 
 // Get divisors of number
 template <typename T>
-vector<T2<T>> divisor(const T &number)
+vector<T2<T>> divisor(T number)
 {
-	map<T2<T>, size_t> counts = factor(number);
+	map<T2<T>, size_t> counts;
+	factor(number, counts);
 	vector<T2<T>> divisors{1};
 
-	for (const auto &acount : counts)
+	for (const auto &[prime, exponent] : counts)
 	{
-		const T2<T> &prime = acount.first;
-		const size_t exponent = acount.second;
 		const size_t count = divisors.size();
 		T2<T> multiplier = 1;
 		for (size_t j = 0; j < exponent; ++j)
@@ -770,9 +1597,12 @@ string outputdivisors(const T &number, const bool all = false)
 
 	for (size_t i = 0; i < divisors.size(); ++i)
 	{
-		if (i > 0)
+		if (i)
 			strm << ' ';
-		strm << divisors[i];
+		if constexpr (is_same_v<T2<T>, unsigned __int128>)
+			strm << outputbase(divisors[i]);
+		else
+			strm << divisors[i];
 	}
 
 	return strm.str();
@@ -799,7 +1629,11 @@ string outputaliquot(const T &number, const bool all = false)
 	vector<T2<T>> divisors = divisor(n);
 	const T2<T> sum = accumulate(divisors.begin(), divisors.end(), T2<T>(0));
 
-	strm << sum << " (";
+	if constexpr (is_same_v<T2<T>, unsigned __int128>)
+		strm << outputbase(sum);
+	else
+		strm << sum;
+	strm << " (";
 
 	if (sum == n)
 		strm << "Perfect!";
@@ -853,7 +1687,7 @@ string outputfraction(const long double number)
 		long double intpart = 0;
 		long double fractionpart = abs(modf(number, &intpart));
 
-		for (size_t i = 0; i < (sizeof fractions / sizeof fractions[0]) and !output; ++i)
+		for (size_t i = 0; i < size(fractions) and !output; ++i)
 		{
 			if (abs(fractionpart - fractionvalues[i]) <= DBL_EPSILON * n)
 			{
@@ -870,7 +1704,7 @@ string outputfraction(const long double number)
 
 		if (n > DBL_EPSILON)
 		{
-			for (size_t i = 0; i < (sizeof constants / sizeof constants[0]) and !output; ++i)
+			for (size_t i = 0; i < size(constants) and !output; ++i)
 			{
 				if (abs(fmod(number, constantvalues[i])) <= DBL_EPSILON * n)
 				{
@@ -896,14 +1730,18 @@ string outputfraction(const long double number)
 }
 
 // Output all for integer numbers
-void outputall(const intmax_t ll, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
+template <typename T>
+void outputall(const T ll, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
 {
 	// cout << "\n\tLocale:\t\t\t\t";
 	// printf("%'" PRIdMAX, ll);
-	ostringstream strm;
-	strm.imbue(locale(""));
-	strm << ll;
-	cout << "\n\tLocale:\t\t\t\t" << strm.str();
+	if constexpr (!is_same_v<T, __int128>)
+	{
+		ostringstream strm;
+		strm.imbue(locale(""));
+		strm << ll;
+		cout << "\n\tLocale:\t\t\t\t" << strm.str();
+	}
 
 	/* cout << "\n\n\tC (printf)\n";
 	cout << "\t\tOctal (Base 8):\t\t";
@@ -943,7 +1781,7 @@ void outputall(const intmax_t ll, const bool print_exponents, const bool unicode
 	cout << "\n\n\tGreek Numerals:\t\t\t" << outputgreek(ll, uppercase, true);
 
 	cout << "\n\n\tMorse code:\t\t\t" << outputmorsecode(ll, unicode);
-	/* for (unsigned int i = 0; i < (sizeof morsecode / sizeof morsecode[0]); ++i)
+	/* for (size_t i = 0; i < size(morsecode); ++i)
 		cout << "\n\t\tStyle " << i << ":\t\t\t" << outputmorsecode(ll, i); */
 
 	cout << "\n\n\tBraille:\t\t\t" << outputbraille(ll);
@@ -958,7 +1796,7 @@ void outputall(const intmax_t ll, const bool print_exponents, const bool unicode
 
 // Output all for arbitrary-precision integer numbers
 #if HAVE_GMP
-void outputall(const mpz_class &num, const bool print_exponents, const bool unicode, const bool uppercase)
+void outputall(const mpz_class &num, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
 {
 	// cout << "\n\tLocale:\t\t\t\t";
 	// gmp_printf("%'Zd", num.get_mpz_t());
@@ -981,39 +1819,28 @@ void outputall(const mpz_class &num, const bool print_exponents, const bool unic
 	cout << "\n\t\tDecimal (Base 10):\t" << dec << num;
 	cout << "\n\t\tHexadecimal (Base 16):\t" << hex << num; */
 
-	cout << "\n\n\tBinary (Base 2):\t\t";
-	mpz_out_str(stdout, uppercase ? -2 : 2, num.get_mpz_t());
-	cout << "\n\tTernary (Base 3):\t\t";
-	mpz_out_str(stdout, uppercase ? -3 : 3, num.get_mpz_t());
-	cout << "\n\tQuaternary (Base 4):\t\t";
-	mpz_out_str(stdout, uppercase ? -4 : 4, num.get_mpz_t());
-	cout << "\n\tQuinary (Base 6):\t\t";
-	mpz_out_str(stdout, uppercase ? -6 : 6, num.get_mpz_t());
-	cout << "\n\tOctal (Base 8):\t\t\t";
-	mpz_out_str(stdout, uppercase ? -8 : 8, num.get_mpz_t());
-	cout << "\n\tDecimal (Base 10):\t\t";
-	mpz_out_str(stdout, uppercase ? -10 : 10, num.get_mpz_t());
-	cout << "\n\tDuodecimal (Base 12):\t\t";
-	mpz_out_str(stdout, uppercase ? -12 : 12, num.get_mpz_t());
-	cout << "\n\tHexadecimal (Base 16):\t\t";
-	mpz_out_str(stdout, uppercase ? -16 : 16, num.get_mpz_t());
-	cout << "\n\tVigesimal (Base 20):\t\t";
-	mpz_out_str(stdout, uppercase ? -20 : 20, num.get_mpz_t());
-	// cout << "\n\tBase 36:\t\t\t";
-	// mpz_out_str(stdout, uppercase ? -36 : 36, num.get_mpz_t());
+	cout << "\n\n\tBinary (Base 2):\t\t" << num.get_str(uppercase ? -2 : 2);
+	cout << "\n\tTernary (Base 3):\t\t" << num.get_str(uppercase ? -3 : 3);
+	cout << "\n\tQuaternary (Base 4):\t\t" << num.get_str(uppercase ? -4 : 4);
+	cout << "\n\tQuinary (Base 6):\t\t" << num.get_str(uppercase ? -6 : 6);
+	cout << "\n\tOctal (Base 8):\t\t\t" << num.get_str(uppercase ? -8 : 8);
+	cout << "\n\tDecimal (Base 10):\t\t" << num.get_str(uppercase ? -10 : 10);
+	cout << "\n\tDuodecimal (Base 12):\t\t" << num.get_str(uppercase ? -12 : 12);
+	cout << "\n\tHexadecimal (Base 16):\t\t" << num.get_str(uppercase ? -16 : 16);
+	cout << "\n\tVigesimal (Base 20):\t\t" << num.get_str(uppercase ? -20 : 20);
+	// cout << "\n\tBase 36:\t\t\t" << num.get_str(uppercase ? -36 : 36);
 
 	cout << "\n";
 	for (int i = 2; i <= 36; ++i)
-	{
-		cout << "\n\tBase " << i << ":\t\t\t" << (i < 10 ? "\t" : "");
-		mpz_out_str(stdout, uppercase ? -i : i, num.get_mpz_t());
-	}
+		cout << "\n\tBase " << i << ":\t\t\t" << (i < 10 ? "\t" : "") << num.get_str(uppercase ? -i : i);
 
 	cout << "\n\n\tMorse code:\t\t\t" << outputmorsecode(num, unicode);
-	/* for (unsigned int i = 0; i < (sizeof morsecode / sizeof morsecode[0]); ++i)
+	/* for (size_t i = 0; i < size(morsecode); ++i)
 		cout << "\n\t\tStyle " << i << ":\t\t\t" << outputmorsecode(num, i); */
 
 	cout << "\n\n\tBraille:\t\t\t" << outputbraille(num);
+
+	cout << "\n\n\tText:\t\t\t\t" << outputtext(num, special);
 
 	cout << "\n\n\tPrime Factors:\t\t\t" << outputfactors(num, print_exponents, unicode, true);
 	cout << "\n\tDivisors:\t\t\t" << outputdivisors(num, true);
@@ -1053,7 +1880,7 @@ void outputall(const long double ld)
 int integers(const char *const token, const int frombase, const short tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, const int arg)
 {
 	char *p;
-	const intmax_t ll = strtoimax(token, &p, frombase);
+	intmax_t ll = strtoimax(token, &p, frombase);
 	if (*p)
 	{
 		cerr << "Error: Invalid integer number: " << quoted(token) << ".\n";
@@ -1061,61 +1888,141 @@ int integers(const char *const token, const int frombase, const short tobase, co
 	}
 	if (errno == ERANGE)
 	{
+		errno = 0;
+		__int128 i128 = strtoi128(token, &p, frombase);
+		if (*p)
+		{
+			cerr << "Error: Invalid integer number: " << quoted(token) << ".\n";
+			return 1;
+		}
+		if (errno == ERANGE)
+		{
 #if HAVE_GMP
-		char const *str = token;
-		// Skip initial '+'.
-		if (*str == '+')
-			++str;
-		mpz_class num(str, frombase);
-		cout << num << ": ";
-		if (tobase)
-			mpz_out_str(stdout, uppercase ? -tobase : tobase, num.get_mpz_t());
-		else
-			switch (arg)
+			char const *str = token;
+			// Skip initial '+'.
+			if (*str == '+')
+				++str;
+			try
 			{
-			case 'a':
-				outputall(num, print_exponents, unicode, uppercase);
-				break;
-			case 'e':
-				// gmp_printf("%'Zd", num.get_mpz_t());
-				{
-					ostringstream strm;
-					strm.imbue(locale(""));
-					strm << num;
-					cout << strm.str();
-				}
-				break;
-			case 'm':
-				cout << outputmorsecode(num, unicode);
-				break;
-			case BRAILLE_OPTION:
-				cout << outputbraille(num);
-				break;
-			case 'p':
-				cout << outputfactors(num, print_exponents, unicode);
-				break;
-			case 'd':
-				cout << outputdivisors(num);
-				break;
-			case 's':
-				cout << outputaliquot(num);
-				break;
-			case 'n':
-				cout << outputprime(num);
-				break;
-			default:
-				cerr << "Error: Option not available for arbitrary-precision integer numbers.\n";
+				mpz_class num(str, frombase);
+				cout << num << ": ";
+				if (dev_debug)
+					cerr << "[using arbitrary-precision arithmetic] ";
+				if (tobase)
+					if (tobase == 16 and arg == 't')
+						cout << outputhextext(num);
+					else
+						cout << num.get_str(uppercase ? -tobase : tobase);
+				else
+					switch (arg)
+					{
+					case 'a':
+						outputall(num, print_exponents, unicode, uppercase, special);
+						break;
+					case 'e':
+						// gmp_printf("%'Zd", num.get_mpz_t());
+						{
+							ostringstream strm;
+							strm.imbue(locale(""));
+							strm << num;
+							cout << strm.str();
+						}
+						break;
+					case 'm':
+						cout << outputmorsecode(num, unicode);
+						break;
+					case BRAILLE_OPTION:
+						cout << outputbraille(num);
+						break;
+					case 't':
+						cout << outputtext(num, special);
+						break;
+					case 'p':
+						cout << outputfactors(num, print_exponents, unicode);
+						break;
+					case 'd':
+						cout << outputdivisors(num);
+						break;
+					case 's':
+						cout << outputaliquot(num);
+						break;
+					case 'n':
+						cout << outputprime(num);
+						break;
+					default:
+						cerr << "Error: Option not available for arbitrary-precision integer numbers.\n";
+						return 1;
+					}
+				cout << endl;
+			}
+			catch (const invalid_argument &ex)
+			{
+				cerr << "Error: Invalid integer number: " << quoted(token) << " (" << ex.what() << ").\n";
 				return 1;
 			}
-		cout << endl;
 #else
-		cerr << "Error: Integer number too large to input: " << quoted(token) << " (" << strerror(errno) << "). Program does not support arbitrary-precision integer numbers, because it was not built with GNU Multiple Precision (GMP).\n";
-		return 1;
+			cerr << "Error: Integer number too large to input: " << quoted(token) << " (" << strerror(errno) << "). Program does not support arbitrary-precision integer numbers, because it was not built with GNU Multiple Precision (GMP).\n";
+			return 1;
 #endif
+		}
+		else
+		{
+			cout << outputbase(i128) << ": ";
+			if (dev_debug)
+				cerr << "[using single-precision arithmetic] ";
+			if (tobase)
+				if (tobase == 16 and arg == 't')
+					cout << outputhextext(i128);
+				else
+					cout << outputbase(i128, tobase, uppercase);
+			else
+				switch (arg)
+				{
+				case 'a':
+					outputall(i128, print_exponents, unicode, uppercase, special);
+					break;
+				case TO_OPTION:
+					cout << outputunit(i128, scale_to);
+					break;
+				case 'r':
+					cout << outputroman(i128, unicode);
+					break;
+				case 'g':
+					cout << outputgreek(i128, uppercase);
+					break;
+				case 'm':
+					cout << outputmorsecode(i128, unicode);
+					break;
+				case BRAILLE_OPTION:
+					cout << outputbraille(i128);
+					break;
+				case 't':
+					cout << outputtext(i128, special);
+					break;
+				case 'p':
+					cout << outputfactors(i128, print_exponents, unicode);
+					break;
+				case 'd':
+					cout << outputdivisors(i128);
+					break;
+				case 's':
+					cout << outputaliquot(i128);
+					break;
+				case 'n':
+					cout << outputprime(i128);
+					break;
+				default:
+					cerr << "Error: Option not available for 128-bit integer numbers.\n";
+					return 1;
+				}
+			cout << endl;
+		}
 	}
 	else
 	{
 		cout << ll << ": ";
+		if (dev_debug)
+			cerr << "[using single-precision arithmetic] ";
 		if (tobase)
 			if (tobase == 16 and arg == 't')
 				cout << outputhextext(ll);
@@ -1180,12 +2087,12 @@ int floats(const char *const token, const scale_type scale_to, const int arg)
 	const long double ld = strtold(token, &p);
 	if (*p)
 	{
-		cerr << "Error: Invalid floating point number: " << quoted(token) << "\n";
+		cerr << "Error: Invalid floating point number: " << quoted(token) << ".\n";
 		return 1;
 	}
 	if (errno == ERANGE)
 	{
-		cerr << "Error: Floating point number too large to input: " << quoted(token) << " (" << strerror(errno) << ")\n";
+		cerr << "Error: Floating point number too large to input: " << quoted(token) << " (" << strerror(errno) << ").\n";
 		return 1;
 	}
 
@@ -1253,6 +2160,7 @@ Options:
             --braille       Output as Braille
                                 Implies --unicode, supports arbitrary-precision/bignums.
         -t, --text          Output as text
+                                Supports arbitrary-precision/bignums.
                 --special       Use special words, including: pair, dozen, baker's dozen, score, gross and great gross.
         -p, --factors       Output prime factors (similar to 'factor')
                                 Numbers > 0, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
@@ -1262,10 +2170,16 @@ Options:
         -s, --aliquot       Output aliquot sum (sum of all divisors) and if it is perfect, deficient or abundant
                                 Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
         -n, --prime         Output if it is prime or composite
-                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.
+                                Numbers > 1, supports arbitrary-precision/bignums if factor command was also built with GNU Multiple Precision.)d"
+#ifndef FACTOR
+		 << R"(
+        -w, --prove-primality Run probabilistic tests instead of proving the primality of factors
+                                Only affects --factors, --divisors, --aliquot and --prime.)"
+#endif
+		 << R"(
         -a, --all           Output all of the above (default)
-        Except when otherwise noted above, this program supports all Integer numbers )d"
-		 << INTMAX_MIN << " - " << INTMAX_MAX << R"d(.
+        Except when otherwise noted above, this program supports all Integer numbers )"
+		 << outputbase(INT128_MIN) << " - " << outputbase(INT128_MAX) << R"d(.
 
     -f, --float         Floating point numbers
         -e, --locale        Output in Locale format with digit grouping (same as 'printf "%'g" <NUMBER>' or 'numfmt --grouping')
@@ -1334,12 +2248,6 @@ Examples:
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2)
-	{
-		usage(argv[0]);
-		return 1;
-	}
-
 	bool integer = true;
 	int frombase = 0;
 	int tobase = 0;
@@ -1373,12 +2281,13 @@ int main(int argc, char *argv[])
 		{"roman", no_argument, nullptr, 'r'},
 		{"greek", no_argument, nullptr, 'g'},
 		{"morse", no_argument, nullptr, 'm'},
-		{"braille", no_argument, nullptr, BRAILLE_OPTION}, // w
+		{"braille", no_argument, nullptr, BRAILLE_OPTION},
 		{"text", no_argument, nullptr, 't'},
 		{"special", no_argument, nullptr, SPECIAL_OPTION},
 		{"to", required_argument, nullptr, TO_OPTION},
 		{"factors", no_argument, nullptr, 'p'},
 		{"exponents", no_argument, nullptr, 'h'},
+		{"prove-primality", no_argument, nullptr, 'w'},
 		{"divisors", no_argument, nullptr, 'd'},
 		{"aliquot", no_argument, nullptr, 's'},
 		{"prime", no_argument, nullptr, 'n'},
@@ -1389,6 +2298,9 @@ int main(int argc, char *argv[])
 		{"unicode", no_argument, nullptr, 'u'},
 		{"lower", no_argument, nullptr, 'l'},
 		{"upper", no_argument, nullptr, UPPER_OPTION}, // z
+		// {"-debug", no_argument, nullptr, DEV_DEBUG_OPTION},
+		{"verbose", no_argument, nullptr, 'v'},
+		{"-debug", no_argument, nullptr, 'v'},
 		{"help", no_argument, nullptr, GETOPT_HELP_CHAR},
 		{"version", no_argument, nullptr, GETOPT_VERSION_CHAR},
 		{nullptr, 0, nullptr, 0}};
@@ -1396,7 +2308,7 @@ int main(int argc, char *argv[])
 	int option_index = 0;
 	int c = 0;
 
-	while ((c = getopt_long(argc, argv, "ab:cdefghilmnoprstux", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "ab:cdefghilmnoprstuvwx", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -1476,10 +2388,17 @@ int main(int argc, char *argv[])
 		// break;
 		case TO_OPTION:
 			arg = c;
-			scale_to = xargmatch("--to", optarg, scale_to_args, (sizeof scale_to_args / sizeof scale_to_args[0]), scale_to_types);
+			scale_to = xargmatch("--to", optarg, scale_to_args, size(scale_to_args), scale_to_types);
 			break;
 		case 'u':
 			unicode = true;
+			break;
+		// case DEV_DEBUG_OPTION:
+		case 'v':
+			dev_debug = true;
+			break;
+		case 'w':
+			flag_prove_primality = false;
 			break;
 		case 'x':
 			tobase = 16;

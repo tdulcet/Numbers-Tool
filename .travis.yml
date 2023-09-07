@@ -26,12 +26,12 @@ install:
   - cd "$DIRNAME/"
   - sed -i 's/"factor"/".\/factor"/' numbers.cpp
 script:
-  - g++ -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o gcc_numbers
+  - g++ -std=gnu++17 -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o gcc_numbers
   - ./gcc_numbers --help
-  - g++ -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o gcc_gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
+  - g++ -std=gnu++17 -Wall -g -Og -fsanitize=address,undefined numbers.cpp -o gcc_gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
   - ./gcc_gmp_numbers --help
-  - clang++ -Wall -g -Og -fsanitize=address,undefined,integer numbers.cpp -o clang_numbers
+  - clang++ -std=gnu++17 -Wall -g -Og -fsanitize=address,undefined,integer numbers.cpp -o clang_numbers
   - ./clang_numbers --help
-  - clang++ -Wall -g -Og -fsanitize=address,undefined,integer numbers.cpp -o clang_gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
+  - clang++ -std=gnu++17 -Wall -g -Og -fsanitize=address,undefined,integer numbers.cpp -o clang_gmp_numbers -DHAVE_GMP -lgmpxx -lgmp
   - ./clang_gmp_numbers --help
   - cppcheck --enable=all -i coreutils -i gnulib .
