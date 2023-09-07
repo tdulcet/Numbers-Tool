@@ -64,6 +64,7 @@
 #include <cfloat>
 #include <limits>
 #include <clocale>
+#include <array>
 #include <vector>
 #include <numeric>
 #include <algorithm>
@@ -173,6 +174,9 @@ constexpr __int128 INT128_MIN = numeric_limits<__int128>::min();
 const long double max_bit = scalbn(1.0L, LDBL_MANT_DIG - 1);
 const long double MAX = max_bit + (max_bit - 1);
 
+template <typename T>
+using T2 = typename conditional<is_integral_v<T>, make_unsigned<T>, common_type<T>>::type::type;
+
 /* debugging for developers.  Enables devmsg().
    This flag is used only in the GMP code.  */
 bool dev_debug = false;
@@ -180,19 +184,16 @@ bool dev_debug = false;
 /* Prove primality or run probabilistic tests.  */
 bool flag_prove_primality = true;
 
+#ifndef FACTOR
 /* Number of Miller-Rabin tests to run when not proving primality.  */
 constexpr int MR_REPS = 25;
 
-template <typename T>
-using T2 = typename conditional<is_integral_v<T>, make_unsigned<T>, common_type<T>>::type::type;
-
-#ifndef FACTOR
 template <size_t N>
 constexpr auto primes()
 {
 	constexpr size_t limit = !(N & 1) ? N - 1 : N;
 	constexpr size_t size = (limit - 1) / 2;
-	constexpr auto sieve = [&size]() constexpr -> auto
+	constexpr auto sieve = [&]() constexpr -> auto
 	{
 		array<bool, size> sieve{};
 		// sieve.fill(true);
@@ -298,7 +299,7 @@ template <typename T>
 T aexport(const mpz_class &value)
 {
 	T result;
-	mpz_export(&result, 0, -1, sizeof(result), 0, 0, value.get_mpz_t());
+	mpz_export(&result, nullptr, -1, sizeof(result), 0, 0, value.get_mpz_t());
 
 	return result;
 }
@@ -377,7 +378,7 @@ __int128 strtoi128(const char *nptr, char **endptr, int base)
 	}
 	else if (neg)
 		acc = -acc;
-	if (endptr != NULL)
+	if (endptr != nullptr)
 		*endptr = (char *)(any ? s - 1 : nptr);
 	return acc;
 }
@@ -438,7 +439,7 @@ unsigned __int128 strtou128(const char *nptr, char **endptr, int base)
 	}
 	else if (neg)
 		acc = -acc;
-	if (endptr != NULL)
+	if (endptr != nullptr)
 		*endptr = (char *)(any ? s - 1 : nptr);
 	return acc;
 }
@@ -1026,7 +1027,7 @@ constexpr T diff(const T a, const T b)
 template <typename T>
 constexpr T mulm(T a, T b, const T mod)
 {
-	static_assert(is_integral_v<T>, "");
+	static_assert(is_integral_v<T> );
 	// assert(mod>0);
 	// assert(a<mod);
 	// assert(b<mod);
@@ -1046,7 +1047,7 @@ constexpr T mulm(T a, T b, const T mod)
 template <typename T>
 constexpr T powm(T base, T exp, const T mod)
 {
-	static_assert(is_integral_v<T>, "");
+	static_assert(is_integral_v<T> );
 	// assert(mod>1);
 	T res = 1;
 
@@ -1163,7 +1164,7 @@ bool prime_p(const T &n)
 		}
 		if (n <= aINT128_MAX)
 		{
-			const unsigned __int128 an = aexport<unsigned __int128>(n);
+			const auto an = aexport<unsigned __int128>(n);
 			return prime_p(an);
 		}
 #endif
@@ -1232,7 +1233,7 @@ bool prime_p(const T &n)
 			}
 			else if (tmp <= aINT128_MAX)
 			{
-				unsigned __int128 atmp = aexport<unsigned __int128>(tmp);
+				auto atmp = aexport<unsigned __int128>(tmp);
 				factor(atmp, factors);
 				tmp = import(atmp);
 			}
@@ -1390,7 +1391,7 @@ void factor_using_pollard_rho(T1 &n, size_t a, map<T2, size_t> &factors)
 				}
 				else if (t <= aINT128_MAX)
 				{
-					unsigned __int128 at = aexport<unsigned __int128>(t);
+					auto at = aexport<unsigned __int128>(t);
 					factor_using_pollard_rho(at, a + 1, factors);
 					t = import(at);
 				}

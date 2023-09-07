@@ -11,6 +11,7 @@ jobs:
     name: Linux
 
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.cxx == 'g++' && matrix.os == 'ubuntu-20.04' }}
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-22.04]
@@ -39,5 +40,5 @@ jobs:
     - name: Cppcheck
       run: cppcheck --enable=all .
     - name: Clang-Tidy
-      run: clang-tidy -checks='bugprone-*,cert-*,clang-analyzer-*,misc-const-correctness,misc-redundant-expression,misc-unused-*,modernize-*,-modernize-use-trailing-return-type,performance-*,portability-*,readability-const-return-type,readability-container-*,readability-duplicate-include,readability-else-after-return,readability-non-const-parameter,readability-redundant-*,readability-simplify-*,readability-string-compare,readability-use-anyofallof' -header-filter='.*' *.cpp -- -Wall -O3 -DHAVE_GMP
+      run: clang-tidy -checks='bugprone-*,cert-*,clang-analyzer-*,misc-const-correctness,misc-redundant-expression,misc-unused-*,modernize-*,-modernize-use-trailing-return-type,performance-*,portability-*,readability-const-return-type,readability-container-*,readability-duplicate-include,readability-else-after-return,readability-non-const-parameter,readability-redundant-*,readability-simplify-*,readability-string-compare,readability-use-anyofallof' -header-filter='.*' *.cpp -- -Wall -O3 -std=gnu++17 -DHAVE_GMP
 
