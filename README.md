@@ -75,14 +75,14 @@ Requires Make and the GNU C compiler.
 DIRNAME=$PWD
 
 cd /tmp/
-git clone --depth 1 https://github.com/coreutils/coreutils.git
-git clone https://github.com/coreutils/gnulib.git
+git clone --filter=blob:none https://github.com/coreutils/coreutils.git
+git clone --filter=blob:none https://github.com/coreutils/gnulib.git
 GNULIB_SRCDIR="$PWD/gnulib"
 cd coreutils/
 ./bootstrap --gnulib-srcdir="$GNULIB_SRCDIR"
-./configure # If the next command fails, try rerunning this command with the --disable-gcc-warnings flag
-make -j "$(nproc)" CFLAGS="-g -O3 -flto"
-make -j "$(nproc)" check CFLAGS="-g -O3 -flto" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
+./configure
+make -j "$(nproc)" CFLAGS="-g -O3 -flto" WERROR_CFLAGS=
+make -j "$(nproc)" check CFLAGS="-g -O3 -flto" WERROR_CFLAGS= RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
 
 # Copy factor command to starting directory
 cp ./src/factor "$DIRNAME/"
@@ -103,7 +103,7 @@ Requires Rust: `curl https://sh.rustup.rs -sSf | sh`
 DIRNAME=$PWD
 
 cd /tmp/
-git clone --depth 1 https://github.com/uutils/coreutils.git
+git clone --filter=blob:none https://github.com/uutils/coreutils.git
 cd coreutils/
 make PROFILE=release
 make -j "$(nproc)" test

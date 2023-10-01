@@ -26,17 +26,17 @@
 	DIRNAME=$PWD
 
 	cd /tmp/
-	git clone --depth 1 https://github.com/coreutils/coreutils.git
-	git clone https://github.com/coreutils/gnulib.git
+	git clone --filter=blob:none https://github.com/coreutils/coreutils.git
+	git clone --filter=blob:none https://github.com/coreutils/gnulib.git
 	GNULIB_SRCDIR="$PWD/gnulib"
 	cd coreutils/
 	./bootstrap --gnulib-srcdir="$GNULIB_SRCDIR"
 	./configure # --disable-gcc-warnings
-	make -j "$(nproc)" CFLAGS="-g -O3 -flto"
-	make -j "$(nproc)" check CFLAGS="-g -O3 -flto" RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
+	make -j "$(nproc)" CFLAGS="-g -O3 -flto" WERROR_CFLAGS=
+	make -j "$(nproc)" check CFLAGS="-g -O3 -flto" WERROR_CFLAGS= RUN_EXPENSIVE_TESTS=yes RUN_VERY_EXPENSIVE_TESTS=yes
 
 	Copy factor command to starting directory
-	cp ./src/factor "$DIRNAME/" */
+	cp --reflink=auto ./src/factor "$DIRNAME/" */
 
 /* Build uutils coreutils (Cross-platform Rust rewrite of the GNU Coreutils, but does not currently support arbitrary-precision/bignums (https://github.com/uutils/coreutils/issues/1559))
 
@@ -47,13 +47,13 @@
 	DIRNAME=$PWD
 
 	cd /tmp/
-	git clone --depth 1 https://github.com/uutils/coreutils.git
+	git clone --filter=blob:none https://github.com/uutils/coreutils.git
 	cd coreutils/
 	make PROFILE=release
 	make -j "$(nproc)" test
 
 	Copy factor command to starting directory
-	cp ./target/release/factor "$DIRNAME/" */
+	cp --reflink=auto ./target/release/factor "$DIRNAME/" */
 
 #include <iostream>
 #include <sstream>
