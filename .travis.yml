@@ -9,7 +9,7 @@ matrix:
     dist: bionic
   - os: linux
     dist: focal
-before_install: wget https://raw.github.com/tdulcet/Linux-System-Information/master/info.sh -qO - | bash -s --
+before_install: wget -qO - https://raw.github.com/tdulcet/Linux-System-Information/master/info.sh | bash -s --
 install:
   - sudo apt-get -yqq update
   - sudo apt-get -yqq install cppcheck autopoint texinfo gperf expect

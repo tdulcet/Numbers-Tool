@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.com/tdulcet/Numbers-Tool.svg?branch=master)](https://travis-ci.com/tdulcet/Numbers-Tool)
-[![Actions Status](https://github.com/tdulcet/Numbers-Tool/workflows/CI/badge.svg?branch=master)](https://github.com/tdulcet/Numbers-Tool/actions)
+[![Actions Status](https://github.com/tdulcet/Numbers-Tool/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tdulcet/Numbers-Tool/actions/workflows/ci.yml)
 
 # Numbers Tool
 
