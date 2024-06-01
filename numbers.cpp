@@ -175,7 +175,7 @@ const long double max_bit = scalbn(1.0L, LDBL_MANT_DIG - 1);
 const long double MAX = max_bit + (max_bit - 1);
 
 template <typename T>
-using T2 = typename conditional<is_integral_v<T>, make_unsigned<T>, common_type<T>>::type::type;
+using T2 = typename conditional_t<is_integral_v<T>, make_unsigned<T>, common_type<T>>::type;
 
 /* debugging for developers.  Enables devmsg().
    This flag is used only in the GMP code.  */
@@ -267,23 +267,23 @@ constexpr auto primes()
 	return tuple{primes, p};
 }
 
-// constexpr auto [primes_diff, FIRST_OMITTED_PRIME] = primes<1 << 16>(); // 2^16 = 65536
+// constexpr auto [primes_diff, FIRST_OMITTED_PRIME] = primes<1u << 16>(); // 2^16 = 65536
 // constexpr auto temp = primes<5000>();
 // constexpr auto temp = primes<50000>();
-constexpr auto temp = primes<1 << 16>(); // 2^16 = 65536
+constexpr auto temp = primes<1u << 16>(); // 2^16 = 65536
 // constexpr auto temp = primes<500000>();
 constexpr auto &primes_diff = get<0>(temp);
 constexpr auto &FIRST_OMITTED_PRIME = get<1>(temp);
 
 constexpr size_t PRIMES_PTAB_ENTRIES = size(primes_diff);
 // static_assert(PRIMES_PTAB_ENTRIES == 669 - 1);
-// static_assert(FIRST_OMITTED_PRIME == 5003); // 4999;
+// static_assert(FIRST_OMITTED_PRIME == 5003);
 // static_assert(PRIMES_PTAB_ENTRIES == 5133 - 1);
-// static_assert(FIRST_OMITTED_PRIME == 50021); // 49999
+// static_assert(FIRST_OMITTED_PRIME == 50021);
 static_assert(PRIMES_PTAB_ENTRIES == 6542 - 1);
-static_assert(FIRST_OMITTED_PRIME == 65537); // 65521
+static_assert(FIRST_OMITTED_PRIME == 65537);
 // static_assert(PRIMES_PTAB_ENTRIES == 41538 - 1);
-// static_assert(FIRST_OMITTED_PRIME == 500009); // 499979
+// static_assert(FIRST_OMITTED_PRIME == 500009);
 
 #if HAVE_GMP
 template <typename T>
@@ -575,6 +575,8 @@ string outputbase(const T number, const short base = 10, const bool uppercase = 
 	anumber = number < 0 ? -anumber : anumber;
 
 	string str;
+	// This reserves too much space for higher bases
+	str.reserve(__bit_width(anumber) + (number < 0));
 
 	do
 	{
@@ -728,7 +730,7 @@ string outputbraille(const T &number)
 
 	str += braille[60]; // Number indicator
 
-	for (char i : text)
+	for (const char i : text)
 		str += braille[brailleindexes[i - '0']];
 
 	return str;
@@ -776,7 +778,7 @@ string thousandpower(size_t power)
 	{
 		string astr;
 
-		unsigned m = power % scale;
+		const unsigned m = power % scale;
 		power /= scale;
 		if (m)
 		{
@@ -1006,7 +1008,7 @@ int exec(const char *const cmd, string &result)
 		{
 			result += buffer;
 		}
-		if (result.length() > 0)
+		if (!result.empty())
 			result.erase(result.length() - 1);
 	}
 	catch (...)
@@ -1557,6 +1559,7 @@ vector<T2<T>> divisor(T number)
 	map<T2<T>, size_t> counts;
 	factor(number, counts);
 	vector<T2<T>> divisors{1};
+	divisors.reserve(accumulate(counts.cbegin(), counts.cend(), divisors.size(), [](const size_t sum, const auto &element) { return sum + (sum * element.second); }));
 
 	for (const auto &[prime, exponent] : counts)
 	{
@@ -1627,8 +1630,8 @@ string outputaliquot(const T &number, const bool all = false)
 	const T2<T> &n = number;
 	// n = number < 0 ? -n : n;
 
-	vector<T2<T>> divisors = divisor(n);
-	const T2<T> sum = accumulate(divisors.begin(), divisors.end(), T2<T>(0));
+	const vector<T2<T>> divisors = divisor(n);
+	const T2<T> sum = accumulate(divisors.cbegin(), divisors.cend(), T2<T>(0));
 
 	if constexpr (is_same_v<T2<T>, unsigned __int128>)
 		strm << outputbase(sum);
@@ -1666,7 +1669,7 @@ string outputprime(const T &number, const bool all = false)
 	const T2<T> &n = number;
 	// n = number < 0 ? -n : n;
 
-	vector<T2<T>> divisors = divisor(n);
+	const vector<T2<T>> divisors = divisor(n);
 
 	str = divisors.size() == 1 ? "Prime!" : "Composite (Not prime)";
 
@@ -1686,7 +1689,7 @@ string outputfraction(const long double number)
 	if (n <= MAX)
 	{
 		long double intpart = 0;
-		long double fractionpart = abs(modf(number, &intpart));
+		const long double fractionpart = abs(modf(number, &intpart));
 
 		for (size_t i = 0; i < size(fractions) and !output; ++i)
 		{
@@ -1881,7 +1884,7 @@ void outputall(const long double ld)
 int integers(const char *const token, const int frombase, const short tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, const int arg)
 {
 	char *p;
-	intmax_t ll = strtoimax(token, &p, frombase);
+	const intmax_t ll = strtoimax(token, &p, frombase);
 	if (*p)
 	{
 		cerr << "Error: Invalid integer number: " << quoted(token) << ".\n";
@@ -1890,7 +1893,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 	if (errno == ERANGE)
 	{
 		errno = 0;
-		__int128 i128 = strtoi128(token, &p, frombase);
+		const __int128 i128 = strtoi128(token, &p, frombase);
 		if (*p)
 		{
 			cerr << "Error: Invalid integer number: " << quoted(token) << ".\n";
@@ -1905,7 +1908,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 				++str;
 			try
 			{
-				mpz_class num(str, frombase);
+				const mpz_class num(str, frombase);
 				cout << num << ": ";
 				if (dev_debug)
 					cerr << "[using arbitrary-precision arithmetic] ";
@@ -1954,7 +1957,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 						cerr << "Error: Option not available for arbitrary-precision integer numbers.\n";
 						return 1;
 					}
-				cout << endl;
+				cout << '\n';
 			}
 			catch (const invalid_argument &ex)
 			{
@@ -2016,7 +2019,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 					cerr << "Error: Option not available for 128-bit integer numbers.\n";
 					return 1;
 				}
-			cout << endl;
+			cout << '\n';
 		}
 	}
 	else
@@ -2075,7 +2078,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 				cout << outputprime(ll);
 				break;
 			}
-		cout << endl;
+		cout << '\n';
 	}
 
 	return 0;
@@ -2119,7 +2122,7 @@ int floats(const char *const token, const scale_type scale_to, const int arg)
 		cout << outputfraction(ld);
 		break;
 	}
-	cout << endl;
+	cout << '\n';
 
 	return 0;
 }
