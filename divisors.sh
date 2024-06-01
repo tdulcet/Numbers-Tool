@@ -20,7 +20,7 @@ fi
 n=$1
 
 # if [[ $n -lt 1 ]]; then
-if (( $(bc <<< "$n < 1") )); then
+if (($(bc <<<"$n < 1"))); then
 	echo "Error: <number> must be a number greater than 0." >&2
 	exit 1
 fi
@@ -32,33 +32,33 @@ if ! FACTORS=$(factor "$n" 2>&1); then
 	echo "Error: $FACTORS"
 	exit 1
 fi
-FACTORS=( $(echo "$FACTORS" | sed -n 's/^.*: //p') )
+FACTORS=($(echo "$FACTORS" | sed -n 's/^.*: //p'))
 echo -e "\tPrime Factors:\t\t\t${FACTORS[*]}"
 declare -A AFACTORS=()
 for prime in "${FACTORS[@]}"; do
 	((++AFACTORS[$prime]))
 done
-FACTORS=( $(printf '%s\n' "${FACTORS[@]}" | uniq) )
-DIVISORS=( 1 )
+FACTORS=($(printf '%s\n' "${FACTORS[@]}" | uniq))
+DIVISORS=(1)
 for prime in "${FACTORS[@]}"; do
 	exponent=${AFACTORS[$prime]}
 	count=${#DIVISORS[*]}
 	multiplier=1
-	for (( j = 0; j < exponent; ++j )); do
-		multiplier=$(bc <<< "$multiplier * $prime")
+	for ((j = 0; j < exponent; ++j)); do
+		multiplier=$(bc <<<"$multiplier * $prime")
 		# ((multiplier *= prime))
-		DIVISORS+=( $(for (( i = 0; i < count; ++i )); do echo "${DIVISORS[i]} * $multiplier"; done | bc) )
+		DIVISORS+=($(for ((i = 0; i < count; ++i)); do echo "${DIVISORS[i]} * $multiplier"; done | bc))
 		# for (( i = 0; i < count; ++i )); do
 			# DIVISORS+=( $((DIVISORS[i] * multiplier)) )
 		# done
 	done
 done
 unset 'DIVISORS[-1]'
-DIVISORS=( $(printf '%s\n' "${DIVISORS[@]}" | sort -n) )
+DIVISORS=($(printf '%s\n' "${DIVISORS[@]}" | sort -n))
 echo -e "\tDivisors:\t\t\t${DIVISORS[*]}"
 asum=0
 for k in "${DIVISORS[@]}"; do
-	asum=$(bc <<< "$asum + $k")
+	asum=$(bc <<<"$asum + $k")
 	# ((asum += k))
 done
 echo -e "\tAliquot sum (sum of all divisors):\t$asum"
