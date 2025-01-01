@@ -177,7 +177,7 @@ Options:
     -u, --unicode       Unicode
                             Only affects --roman, --morse and --factors.
     -l, --lower         Lowercase
-                            Only affects --to-base (with <BASE> > 10) and --greek.
+                            Only affects --to-base (with <BASE> > 10), --roman and --greek.
         --upper         Uppercase (default)
 
         --help          Display this help and exit

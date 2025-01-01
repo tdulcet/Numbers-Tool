@@ -116,10 +116,15 @@ enum scale_type const scale_to_types[] = {scale_none, scale_SI, scale_IEC, scale
 
 const char *const suffix_power_char[] = {"", "K", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q"};
 
-const char *const roman[][13] = {
-	{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}, // ASCII
-	{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}	 // Unicode
-};
+const char *const roman[][2][13] = {
+	{
+		{"i", "iv", "v", "ix", "x", "xl", "l", "xc", "c", "cd", "d", "cm", "m"}, // ASCII lowercase
+		{"I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"}	 // ASCII uppercase
+	},
+	{
+		{"ⅰ", "ⅰⅴ", "ⅴ", "ⅰⅹ", "ⅹ", "ⅹⅼ", "ⅼ", "ⅹⅽ", "ⅽ", "ⅽⅾ", "ⅾ", "ⅽⅿ", "ⅿ"}, // Unicode lowercase
+		{"Ⅰ", "ⅠⅤ", "Ⅴ", "ⅠⅩ", "Ⅹ", "ⅩⅬ", "Ⅼ", "ⅩⅭ", "Ⅽ", "ⅭⅮ", "Ⅾ", "ⅭⅯ", "Ⅿ"}	 // Unicode uppercase
+	}};
 
 const short romanvalues[] = {1, 4, 5, 9, 10, 40, 50, 90, 100, 400, 500, 900, 1000};
 
@@ -187,6 +192,7 @@ bool flag_prove_primality = true;
 #ifndef FACTOR
 /* Number of Miller-Rabin tests to run when not proving primality.  */
 constexpr int MR_REPS = 25;
+#endif
 
 template <size_t N>
 constexpr auto primes()
@@ -276,6 +282,7 @@ constexpr auto &primes_diff = get<0>(temp);
 constexpr auto &FIRST_OMITTED_PRIME = get<1>(temp);
 
 constexpr size_t PRIMES_PTAB_ENTRIES = size(primes_diff);
+static_assert(PRIMES_PTAB_ENTRIES >= sizeof(unsigned __int128));
 // static_assert(PRIMES_PTAB_ENTRIES == 669 - 1);
 // static_assert(FIRST_OMITTED_PRIME == 5003);
 // static_assert(PRIMES_PTAB_ENTRIES == 5133 - 1);
@@ -285,6 +292,7 @@ static_assert(FIRST_OMITTED_PRIME == 65537);
 // static_assert(PRIMES_PTAB_ENTRIES == 41538 - 1);
 // static_assert(FIRST_OMITTED_PRIME == 500009);
 
+#ifndef FACTOR
 #if HAVE_GMP
 template <typename T>
 mpz_class import(const T &value)
@@ -321,7 +329,7 @@ constexpr size_t X = sizeof(unsigned __int128) * CHAR_BIT;
 /* Verify that unsigned __int128 does not have holes in its representation.  */
 static_assert(UINT128_MAX >> (X - 1) == 1);
 
-__int128 strtoi128(const char *nptr, char **endptr, int base)
+__int128 strtoi128(const char *nptr, char **endptr = nullptr, int base = 10)
 {
 	const char *s = nptr;
 	int c;
@@ -338,13 +346,13 @@ __int128 strtoi128(const char *nptr, char **endptr, int base)
 	}
 	else if (c == '+')
 		c = *s++;
-	if ((base == 0 or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
+	if ((!base or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
 	{
 		c = s[1];
 		s += 2;
 		base = 16;
 	}
-	if (base == 0)
+	if (!base)
 		base = c == '0' ? 8 : 10;
 
 	unsigned __int128 cutoff = neg ? -(unsigned __int128)INT128_MIN : INT128_MAX;
@@ -383,7 +391,72 @@ __int128 strtoi128(const char *nptr, char **endptr, int base)
 	return acc;
 }
 
-unsigned __int128 strtou128(const char *nptr, char **endptr, int base)
+constexpr unsigned __int128 parse_u128(const char *nptr, const char **endptr = nullptr, int base = 10)
+{
+	const char *p = nptr;
+	while (*p == ' ' or *p == '\t' or *p == '\n' or *p == '\v' or *p == '\f' or *p == '\r')
+		++p;
+
+	bool neg = false;
+	if (*p == '-')
+	{
+		neg = true;
+		++p;
+	}
+	else if (*p == '+')
+		++p;
+
+	if (!base)
+	{
+		if (*p == '0')
+		{
+			if (p[1] == 'x' or p[1] == 'X')
+			{
+				base = 16;
+				p += 2;
+			}
+			else
+			{
+				base = 8;
+				++p;
+			}
+		}
+		else
+			base = 10;
+	}
+	else if (base == 16 and *p == '0' and (p[1] == 'x' or p[1] == 'X'))
+		p += 2;
+
+	unsigned __int128 result = 0;
+
+	for (;; ++p)
+	{
+		int digit = 0;
+		if (*p >= '0' and *p <= '9')
+			digit = *p - '0';
+		else if (*p >= 'A' and *p <= 'Z')
+			digit = *p - 'A' + 10;
+		else if (*p >= 'a' and *p <= 'z')
+			digit = *p - 'a' + 10;
+		else
+			break;
+
+		if (digit >= base)
+			break;
+
+		result = result * base + digit;
+	}
+
+	if (endptr)
+		*endptr = p;
+
+	if (neg)
+		result = -result;
+
+	return result;
+}
+
+unsigned __int128 strtou128(const char *nptr, char **endptr = nullptr, int base = 10)
 {
 	const char *s = nptr;
 	int c;
@@ -400,13 +473,13 @@ unsigned __int128 strtou128(const char *nptr, char **endptr, int base)
 	}
 	else if (c == '+')
 		c = *s++;
-	if ((base == 0 or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
+	if ((!base or base == 16) and c == '0' and (*s == 'x' or *s == 'X'))
 	{
 		c = s[1];
 		s += 2;
 		base = 16;
 	}
-	if (base == 0)
+	if (!base)
 		base = c == '0' ? 8 : 10;
 
 	const unsigned __int128 cutoff = UINT128_MAX / base;
@@ -584,11 +657,13 @@ string outputbase(const T number, const short base = 10, const bool uppercase = 
 
 		digit += digit < 10 ? '0' : (uppercase ? 'A' : 'a') - 10;
 
-		str = digit + str;
+		str += digit;
 
 		anumber /= base;
 
 	} while (anumber > 0);
+
+	reverse(str.begin(), str.end());
 
 	if (number < 0)
 		str = '-' + str;
@@ -598,7 +673,7 @@ string outputbase(const T number, const short base = 10, const bool uppercase = 
 
 // Output numbers 1 - 3999 as Roman numerals
 template <typename T>
-string outputroman(const T number, const bool unicode, const bool all = false)
+string outputroman(const T number, const bool unicode, const bool uppercase, const bool all = false)
 {
 	// T2<T> anumber = abs(number);
 	T2<T> anumber = number;
@@ -625,7 +700,7 @@ string outputroman(const T number, const bool unicode, const bool all = false)
 		{
 			anumber %= romanvalues[i];
 			while (div--)
-				str += roman[unicode][i];
+				str += roman[unicode][uppercase][i];
 		}
 	}
 
@@ -1025,11 +1100,12 @@ constexpr T diff(const T a, const T b)
 {
 	return a >= b ? a - b : b - a;
 }
+#endif
 
 template <typename T>
 constexpr T mulm(T a, T b, const T mod)
 {
-	static_assert(is_integral_v<T> );
+	static_assert(is_integral_v<T>);
 	// assert(mod>0);
 	// assert(a<mod);
 	// assert(b<mod);
@@ -1049,7 +1125,7 @@ constexpr T mulm(T a, T b, const T mod)
 template <typename T>
 constexpr T powm(T base, T exp, const T mod)
 {
-	static_assert(is_integral_v<T> );
+	static_assert(is_integral_v<T>);
 	// assert(mod>1);
 	T res = 1;
 
@@ -1066,6 +1142,7 @@ constexpr T powm(T base, T exp, const T mod)
 	return res;
 }
 
+#ifndef FACTOR
 template <typename T1, typename T2>
 void factor(T1 &t, map<T2, size_t> &factors);
 
@@ -1111,10 +1188,12 @@ void factor_using_division(T1 &t, map<T2, size_t> &factors)
 		}
 	}
 }
+#endif
 
 template <typename T>
-bool millerrabin(const T &n, const T &nm1, const T &x, T &y, const T &q, const size_t k)
+bool millerrabin(const T &n, const T &nm1, const T &x, const T &q, const size_t k)
 {
+	T y = 0;
 #if HAVE_GMP
 	if constexpr (!is_integral_v<T>)
 		mpz_powm(y.get_mpz_t(), x.get_mpz_t(), q.get_mpz_t(), n.get_mpz_t());
@@ -1143,11 +1222,11 @@ bool millerrabin(const T &n, const T &nm1, const T &x, T &y, const T &q, const s
 	return false;
 }
 
+#ifndef FACTOR
 template <typename T>
 bool prime_p(const T &n)
 {
 	bool is_prime;
-	T tmp = 0;
 	map<T, size_t> factors;
 
 	if constexpr (!is_integral_v<T>)
@@ -1210,13 +1289,13 @@ bool prime_p(const T &n)
 	T a = 2;
 
 	/* Perform a Miller-Rabin test, finds most composites quickly.  */
-	if (!millerrabin(n, nm1, a, tmp, q, k))
+	if (!millerrabin(n, nm1, a, q, k))
 		return false;
 
 	if (flag_prove_primality)
 	{
 		/* Factor n-1 for Lucas.  */
-		tmp = nm1;
+		T tmp = nm1;
 		if constexpr (!is_integral_v<T>)
 		{
 			// tmp.fits_ulong_p()
@@ -1267,6 +1346,7 @@ bool prime_p(const T &n)
 			is_prime = true;
 			for (const auto &[p, e] : factors)
 			{
+				T tmp = 0;
 #if HAVE_GMP
 				if constexpr (!is_integral_v<T>)
 					mpz_powm(tmp.get_mpz_t(), a.get_mpz_t(), T(nm1 / p).get_mpz_t(), n.get_mpz_t());
@@ -1290,7 +1370,7 @@ bool prime_p(const T &n)
 
 		a += primes_diff[r]; /* Establish new base.  */
 
-		if (!millerrabin(n, nm1, a, tmp, q, k))
+		if (!millerrabin(n, nm1, a, q, k))
 			return false;
 	}
 
@@ -1494,7 +1574,7 @@ void factor(const T &number, map<T2<T>, size_t> &counts)
 		string token;
 		while (strm >> token)
 		{
-			temp = strtou128(token.c_str(), NULL, 10);
+			temp = strtou128(token.c_str());
 			++counts[temp];
 		}
 	}
@@ -1559,7 +1639,8 @@ vector<T2<T>> divisor(T number)
 	map<T2<T>, size_t> counts;
 	factor(number, counts);
 	vector<T2<T>> divisors{1};
-	divisors.reserve(accumulate(counts.cbegin(), counts.cend(), divisors.size(), [](const size_t sum, const auto &element) { return sum + (sum * element.second); }));
+	divisors.reserve(accumulate(counts.cbegin(), counts.cend(), divisors.size(), [](const size_t sum, const auto &element)
+								{ return sum + (sum * element.second); }));
 
 	for (const auto &[prime, exponent] : counts)
 	{
@@ -1651,6 +1732,76 @@ string outputaliquot(const T &number, const bool all = false)
 	return strm.str();
 }
 
+// https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test#Testing_against_small_sets_of_bases
+// https://oeis.org/A006945
+constexpr std::pair<unsigned short, unsigned __int128> PRIME_BASES[] = {
+	{1, 2047ull},
+	{2, 1373653ull},
+	{3, 25326001ull},
+	{4, 3215031751ull},
+	{5, 2152302898747ull},
+	{6, 3474749660383ull},
+	{7, 341550071728321ull},
+	{9, 3825123056546413051ull},
+	{12, parse_u128("318665857834031151167461")},
+	{13, parse_u128("3317044064679887385961981")}
+	// Propositions only
+	// https://www.ams.org/journals/mcom/2007-76-260/S0025-5718-07-01977-1/S0025-5718-07-01977-1.pdf
+	// {14, parse_u128("6003094289670105800312596501")},
+	// {15, parse_u128("59276361075595573263446330101")},
+	// {16, parse_u128("564132928021909221014087501701")},
+	// {18, parse_u128("1543267864443420616877677640751301")}
+};
+
+template <typename T>
+bool is_prime(const T &n)
+{
+	static_assert(is_integral_v<T>);
+	if (n < 2)
+		return false;
+	if (n == 2)
+		return true;
+	if (!(n & 1))
+		return false;
+	constexpr size_t length = get<0>(PRIME_BASES[size(PRIME_BASES) - 1]);
+	for (size_t p = 3, i = 1; i < length; p += primes_diff[i], ++i)
+	{
+		if (n == p)
+			return true;
+		if (!(n % p))
+			return false;
+	}
+
+	const T nm1 = n - 1;
+
+	const size_t s = __countr_zero(nm1);
+	const T d = nm1 >> s;
+
+	size_t num_bases = 0;
+	for (const auto &[i, num] : PRIME_BASES)
+	{
+		if (n < num)
+		{
+			num_bases = i;
+			break;
+		}
+	}
+	if (!num_bases)
+	{
+		const size_t idx = __bit_width(n) >> 1;
+		num_bases = idx;
+	}
+
+	T a = 2;
+	for (size_t i = 0; i < num_bases; a += primes_diff[i], ++i)
+	{
+		if (!millerrabin(n, nm1, a, d, s))
+			return false;
+	}
+
+	return true;
+}
+
 // Output if number is prime or composite
 template <typename T>
 string outputprime(const T &number, const bool all = false)
@@ -1664,16 +1815,22 @@ string outputprime(const T &number, const bool all = false)
 		return {};
 	}
 
-	string str;
 	// const T2<T> n = abs(number);
 	const T2<T> &n = number;
 	// n = number < 0 ? -n : n;
+	bool ais_prime;
 
-	const vector<T2<T>> divisors = divisor(n);
+#if HAVE_GMP
+	if constexpr (!is_integral_v<T2<T>>)
+	{
+		const size_t idx = mpz_sizeinbase(n.get_mpz_t(), 2) >> 1;
+		ais_prime = mpz_probab_prime_p(n.get_mpz_t(), min<size_t>(idx, INT_MAX));
+	}
+	else
+#endif
+		ais_prime = is_prime(n);
 
-	str = divisors.size() == 1 ? "Prime!" : "Composite (Not prime)";
-
-	return str;
+	return ais_prime ? "Prime!" : "Composite (Not prime)";
 }
 
 // Convert fractions and constants to Unicode characters
@@ -1780,7 +1937,7 @@ void outputall(const T ll, const bool print_exponents, const bool unicode, const
 	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC, true);
 	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC_I, true);
 
-	cout << "\n\n\tRoman Numerals:\t\t\t" << outputroman(ll, unicode, true);
+	cout << "\n\n\tRoman Numerals:\t\t\t" << outputroman(ll, unicode, uppercase, true);
 
 	cout << "\n\n\tGreek Numerals:\t\t\t" << outputgreek(ll, uppercase, true);
 
@@ -1989,7 +2146,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 					cout << outputunit(i128, scale_to);
 					break;
 				case 'r':
-					cout << outputroman(i128, unicode);
+					cout << outputroman(i128, unicode, uppercase);
 					break;
 				case 'g':
 					cout << outputgreek(i128, uppercase);
@@ -2051,7 +2208,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 				cout << outputunit(ll, scale_to);
 				break;
 			case 'r':
-				cout << outputroman(ll, unicode);
+				cout << outputroman(ll, unicode, uppercase);
 				break;
 			case 'g':
 				cout << outputgreek(ll, uppercase);
@@ -2200,7 +2357,7 @@ Options:
     -u, --unicode       Unicode
                             Only affects --roman, --morse and --factors.
     -l, --lower         Lowercase
-                            Only affects --to-base (with <BASE> > 10) and --greek.
+                            Only affects --to-base (with <BASE> > 10), --roman and --greek.
         --upper         Uppercase (default)
 
         --help          Display this help and exit
