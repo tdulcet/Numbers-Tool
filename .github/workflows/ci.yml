@@ -11,10 +11,9 @@ jobs:
     name: Linux
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.cxx == 'g++' && matrix.os == 'ubuntu-20.04' }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04]
         cxx: [g++, clang++]
       fail-fast: false
     env:
