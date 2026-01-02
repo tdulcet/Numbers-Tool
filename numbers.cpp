@@ -1,4 +1,4 @@
-// Teal Dulcet
+// Copyright © Teal Dulcet
 
 // Requires support for 128-bit integers (the __int128/__int128_t type).
 
@@ -85,6 +85,7 @@ enum
 {
 	// DEV_DEBUG_OPTION = CHAR_MAX + 1,
 	TO_OPTION = CHAR_MAX + 1,
+	UNIT_SEPARATOR_OPTION,
 	FROM_BASE_OPTION,
 	BINARY_OPTION,
 	TERNARY_OPTION,
@@ -191,7 +192,7 @@ bool flag_prove_primality = true;
 
 #ifndef FACTOR
 /* Number of Miller-Rabin tests to run when not proving primality.  */
-constexpr int MR_REPS = 25;
+constexpr int MR_REPS = 24;
 #endif
 
 template <size_t N>
@@ -291,6 +292,8 @@ static_assert(PRIMES_PTAB_ENTRIES == 6542 - 1);
 static_assert(FIRST_OMITTED_PRIME == 65537);
 // static_assert(PRIMES_PTAB_ENTRIES == 41538 - 1);
 // static_assert(FIRST_OMITTED_PRIME == 500009);
+
+constexpr auto SQUARE_OF_FIRST_OMITTED_PRIME = FIRST_OMITTED_PRIME * FIRST_OMITTED_PRIME;
 
 #ifndef FACTOR
 #if HAVE_GMP
@@ -536,7 +539,7 @@ T xargmatch(const char *const context, const char *const arg, const char *const 
 
 // Auto-scale number to unit
 // Adapted from: https://github.com/coreutils/coreutils/blob/master/src/numfmt.c
-string outputunit(long double number, const scale_type scale, const bool all = false)
+string outputunit(long double number, const scale_type scale, char const *unit_separator, const bool all = false)
 {
 	ostringstream strm;
 
@@ -625,10 +628,17 @@ string outputunit(long double number, const scale_type scale, const bool all = f
 		str = strm.str();
 	}
 
-	str += power < size(suffix_power_char) ? suffix_power_char[power] : "(error)";
+	if (power > 0)
+	{
+		if (unit_separator)
+			str += unit_separator;
 
-	if (scale == scale_IEC_I and power > 0)
-		str += "i";
+		// power == 1 and scale == scale_SI ? "k" :
+		str += power < size(suffix_power_char) ? suffix_power_char[power] : "(error)";
+
+		if (scale == scale_IEC_I)
+			str += "i";
+	}
 
 	return str;
 }
@@ -1263,7 +1273,7 @@ bool prime_p(const T &n)
 		return false;
 
 	/* We have already casted out small primes.  */
-	if (n < FIRST_OMITTED_PRIME * FIRST_OMITTED_PRIME)
+	if (n < SQUARE_OF_FIRST_OMITTED_PRIME)
 		return true;
 
 	/* Precomputation for Miller-Rabin.  */
@@ -1387,8 +1397,8 @@ void factor_using_pollard_rho(T1 &n, size_t a, map<T2, size_t> &factors)
 	if (dev_debug)
 		cerr << "[pollard-rho (" << a << ")] ";
 
-	unsigned long long k = 1;
-	unsigned long long l = 1;
+	int_fast64_t k = 1;
+	int_fast64_t l = 1;
 
 	while (n != 1)
 	{
@@ -1408,7 +1418,7 @@ void factor_using_pollard_rho(T1 &n, size_t a, map<T2, size_t> &factors)
 				else
 					P = mulm(P, diff(z, x), n);
 
-				if (k % 32 == 1)
+				if ((k & 31) == 1)
 				{
 					if (gcd(P, n) != 1)
 					{
@@ -1425,7 +1435,7 @@ void factor_using_pollard_rho(T1 &n, size_t a, map<T2, size_t> &factors)
 			z = x;
 			k = l;
 			l *= 2;
-			for (unsigned long long i = 0; i < k; ++i)
+			for (int_fast64_t i = 0; i < k; ++i)
 			{
 				if constexpr (!is_integral_v<T1>)
 					x = ((x * x) % n) + a;
@@ -1892,7 +1902,7 @@ string outputfraction(const long double number)
 
 // Output all for integer numbers
 template <typename T>
-void outputall(const T ll, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
+void outputall(const T ll, char const *unit_separator, const bool print_exponents, const bool unicode, const bool uppercase, const bool special)
 {
 	// cout << "\n\tLocale:\t\t\t\t";
 	// printf("%'" PRIdMAX, ll);
@@ -1933,9 +1943,9 @@ void outputall(const T ll, const bool print_exponents, const bool unicode, const
 	for (short i = 2; i <= 36; ++i)
 		cout << "\n\tBase " << i << ":\t\t\t" << (i < 10 ? "\t" : "") << outputbase(ll, i, uppercase);
 
-	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ll, scale_SI, true);
-	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC, true);
-	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC_I, true);
+	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ll, scale_SI, unit_separator, true);
+	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC, unit_separator, true);
+	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ll, scale_IEC_I, unit_separator, true);
 
 	cout << "\n\n\tRoman Numerals:\t\t\t" << outputroman(ll, unicode, uppercase, true);
 
@@ -2021,7 +2031,7 @@ string floattostring(T arg)
 }
 
 // Output all for floating point numbers
-void outputall(const long double ld)
+void outputall(const long double ld, char const *unit_separator)
 {
 	// cout << "\n\tLocale:\t\t\t\t";
 	// printf("%'.*Lg", LDBL_DIG, ld);
@@ -2030,15 +2040,15 @@ void outputall(const long double ld)
 	strm << setprecision(LDBL_DIG) << ld;
 	cout << "\n\tLocale:\t\t\t\t" << strm.str();
 
-	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ld, scale_SI, true);
-	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC, true);
-	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC_I, true);
+	cout << "\n\n\tInternational System of Units (SI):\t\t\t" << outputunit(ld, scale_SI, unit_separator, true);
+	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC, unit_separator, true);
+	cout << "\n\tInternational Electrotechnical Commission (IEC):\t" << outputunit(ld, scale_IEC_I, unit_separator, true);
 
 	cout << "\n\n\tFractions and constants:\t" << outputfraction(ld) << "\n";
 }
 
 // Handle integer numbers
-int integers(const char *const token, const int frombase, const short tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, const int arg)
+int integers(const char *const token, const int frombase, const short tobase, const bool unicode, const bool uppercase, const bool special, const bool print_exponents, const scale_type scale_to, char const *unit_separator, const int arg)
 {
 	char *p;
 	const intmax_t ll = strtoimax(token, &p, frombase);
@@ -2140,10 +2150,10 @@ int integers(const char *const token, const int frombase, const short tobase, co
 				switch (arg)
 				{
 				case 'a':
-					outputall(i128, print_exponents, unicode, uppercase, special);
+					outputall(i128, unit_separator, print_exponents, unicode, uppercase, special);
 					break;
 				case TO_OPTION:
-					cout << outputunit(i128, scale_to);
+					cout << outputunit(i128, scale_to, unit_separator);
 					break;
 				case 'r':
 					cout << outputroman(i128, unicode, uppercase);
@@ -2193,7 +2203,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 			switch (arg)
 			{
 			case 'a':
-				outputall(ll, print_exponents, unicode, uppercase, special);
+				outputall(ll, unit_separator, print_exponents, unicode, uppercase, special);
 				break;
 			case 'e':
 				// printf("%'" PRIdMAX, ll);
@@ -2205,7 +2215,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 				}
 				break;
 			case TO_OPTION:
-				cout << outputunit(ll, scale_to);
+				cout << outputunit(ll, scale_to, unit_separator);
 				break;
 			case 'r':
 				cout << outputroman(ll, unicode, uppercase);
@@ -2242,7 +2252,7 @@ int integers(const char *const token, const int frombase, const short tobase, co
 }
 
 // Handle floating point numbers
-int floats(const char *const token, const scale_type scale_to, const int arg)
+int floats(const char *const token, const scale_type scale_to, char const *unit_separator, const int arg)
 {
 	char *p;
 	const long double ld = strtold(token, &p);
@@ -2261,7 +2271,7 @@ int floats(const char *const token, const scale_type scale_to, const int arg)
 	switch (arg)
 	{
 	case 'a':
-		outputall(ld);
+		outputall(ld, unit_separator);
 		break;
 	case 'e':
 		// printf("%'.*Lg", LDBL_DIG, ld);
@@ -2273,7 +2283,7 @@ int floats(const char *const token, const scale_type scale_to, const int arg)
 		}
 		break;
 	case TO_OPTION:
-		cout << outputunit(ld, scale_to);
+		cout << outputunit(ld, scale_to, unit_separator);
 		break;
 	case 'c':
 		cout << outputfraction(ld);
@@ -2312,6 +2322,7 @@ Options:
                 --viges            Output in Vigesimal   (same as --to-base 20)
             --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
                                 Run 'numfmt --help' for UNIT options.
+            --unit-separator <SEP> Output <SEP> between number and unit
         -r, --roman         Output as Roman numerals
                                 Numbers 1 - 3999.
         -g, --greek         Output as Greek numerals
@@ -2347,6 +2358,7 @@ Options:
             --grouping      
             --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
                                 Run 'numfmt --help' for UNIT options.
+            --unit-separator <SEP> Output <SEP> between number and unit
         -c, --fracts        Convert fractions and mathematical constants to Unicode characters
                                 Supports all Unicode fractions, Pi and e constants, implies --unicode.
         -a, --all           Output all of the above (default)
@@ -2417,6 +2429,7 @@ int main(int argc, char *argv[])
 	bool special = false;
 	bool print_exponents = false;
 	enum scale_type scale_to = scale_none;
+	char const *unit_separator = nullptr;
 	int arg = 'a';
 
 	setlocale(LC_ALL, "");
@@ -2446,6 +2459,7 @@ int main(int argc, char *argv[])
 		{"text", no_argument, nullptr, 't'},
 		{"special", no_argument, nullptr, SPECIAL_OPTION},
 		{"to", required_argument, nullptr, TO_OPTION},
+		{"unit-separator", required_argument, nullptr, UNIT_SEPARATOR_OPTION},
 		{"factors", no_argument, nullptr, 'p'},
 		{"exponents", no_argument, nullptr, 'h'},
 		{"prove-primality", no_argument, nullptr, 'w'},
@@ -2551,6 +2565,9 @@ int main(int argc, char *argv[])
 			arg = c;
 			scale_to = xargmatch("--to", optarg, scale_to_args, size(scale_to_args), scale_to_types);
 			break;
+		case UNIT_SEPARATOR_OPTION:
+			unit_separator = optarg;
+			break;
 		case 'u':
 			unicode = true;
 			break;
@@ -2621,9 +2638,9 @@ int main(int argc, char *argv[])
 		for (int i = optind; i < argc; ++i)
 		{
 			if (integer)
-				integers(argv[i], frombase, tobase, unicode, uppercase, special, print_exponents, scale_to, arg);
+				integers(argv[i], frombase, tobase, unicode, uppercase, special, print_exponents, scale_to, unit_separator, arg);
 			else
-				floats(argv[i], scale_to, arg);
+				floats(argv[i], scale_to, unit_separator, arg);
 		}
 	}
 	else
@@ -2632,9 +2649,9 @@ int main(int argc, char *argv[])
 		while (cin >> token)
 		{
 			if (integer)
-				integers(token.c_str(), frombase, tobase, unicode, uppercase, special, print_exponents, scale_to, arg);
+				integers(token.c_str(), frombase, tobase, unicode, uppercase, special, print_exponents, scale_to, unit_separator, arg);
 			else
-				floats(token.c_str(), scale_to, arg);
+				floats(token.c_str(), scale_to, unit_separator, arg);
 		}
 	}
 

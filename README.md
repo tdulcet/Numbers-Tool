@@ -140,6 +140,7 @@ Options:
                 --viges            Output in Vigesimal   (same as --to-base 20)
             --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
                                 Run 'numfmt --help' for UNIT options.
+            --unit-separator <SEP> Output <SEP> between number and unit
         -r, --roman         Output as Roman numerals
                                 Numbers 1 - 3999.
         -g, --greek         Output as Greek numerals
@@ -169,6 +170,7 @@ Options:
             --grouping
             --to <UNIT>     Auto-scale output numbers to <UNIT> (similar to 'numfmt --to=<UNIT>', but with more precision)
                                 Run 'numfmt --help' for UNIT options.
+            --unit-separator <SEP> Output <SEP> between number and unit
         -c, --fracts        Convert fractions and mathematical constants to Unicode characters
                                 Supports all Unicode fractions, Pi and e constants, implies --unicode.
         -a, --all           Output all of the above (default)
@@ -242,7 +244,9 @@ Pull requests welcome! Ideas for contributions:
 	* Use [modular inverses](https://en.wikipedia.org/wiki/Modular_multiplicative_inverse), [Montgomery reductions](https://en.wikipedia.org/wiki/Montgomery_modular_multiplication) and [Hensel forms](https://en.wikipedia.org/wiki/Hensel%27s_lemma), as the [factor](https://www.gnu.org/software/coreutils/manual/html_node/factor-invocation.html) command from GNU Coreutils does. See the comments at the top of the [`factor.c`](https://github.com/coreutils/coreutils/blob/master/src/factor.c) file.
 	* Parallelize the prime factorization to improve the performance on large numbers.
 	* Implement additional algorithms, such as [ECM](https://en.wikipedia.org/wiki/Lenstra_elliptic-curve_factorization).
-* Support outputting Roman numerals greater than 3999 and Greek numerals greater than 9999
+* Support outputting more numbering systems
+	* Support Roman numerals greater than 3999 and Greek numerals greater than 9999
+	* Support all of the [Unicode numbering systems](https://github.com/unicode-org/cldr/blob/main/common/supplemental/numberingSystems.xml), both numeric and [algorithmic](https://github.com/unicode-org/cldr/blob/main/common/rbnf/root.xml)
 * Support arbitrary-precision floating point numbers
 * Add tests
 * Submit an enhancement request to [GNU Coreutils](https://www.gnu.org/software/coreutils/) to get this included as an extension to the existing [factor](https://www.gnu.org/software/coreutils/manual/html_node/factor-invocation.html) and [numfmt](https://www.gnu.org/software/coreutils/manual/html_node/numfmt-invocation.html) commands

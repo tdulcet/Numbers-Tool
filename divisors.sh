@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Teal Dulcet
+# Copyright © Teal Dulcet
 # Outputs the prime factors, divisors and aliquot sum of a number.
 # ./divisors.sh <number>
 

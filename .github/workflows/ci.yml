@@ -19,7 +19,7 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Before script
       run: |
         wget -qO - https://raw.github.com/tdulcet/Linux-System-Information/master/info.sh | bash -s --
