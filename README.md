@@ -40,11 +40,11 @@ Support for arbitrary-precision integers requires the [GNU Multiple Precision](h
 
 Compile without GMP:
 * GCC: `g++ -std=gnu++17 -Wall -g -O3 -flto numbers.cpp -o numbers`
-* Clang: `clang++ -std=gnu++17 -Wall -g -O3 -flto numbers.cpp -o numbers`
+* Clang: `clang++ -std=gnu++17 -Wall -g -O3 -flto -fconstexpr-steps=2000000 numbers.cpp -o numbers`
 
 Compile with GMP:
 * GCC: `g++ -std=gnu++17 -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
-* Clang: `clang++ -std=gnu++17 -Wall -g -O3 -flto numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
+* Clang: `clang++ -std=gnu++17 -Wall -g -O3 -flto -fconstexpr-steps=2000000 numbers.cpp -o numbers -DHAVE_GMP -lgmpxx -lgmp`
 
 Run: `./numbers [OPTION(S)]... [NUMBER(S)]...`\
 If any of the `NUMBERS` are negative, the first must be preceded by a `--`. See [Help](#help) below for full usage information.

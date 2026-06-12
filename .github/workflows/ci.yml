@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
         cxx: [g++, clang++]
       fail-fast: false
     env:
@@ -28,9 +28,9 @@ jobs:
         $CXX --version
     - name: Script
       run: |
-        ARGS=( -std=gnu++17 -Wall -g -Og )
-        if [[ $CXX =~ ^clang ]]; then
-            ARGS+=( -fsanitize=address,undefined,integer )
+        ARGS=( -std=gnu++17 -Wall -Wextra -g -Og )
+        if [[ $CXX == clang* ]]; then
+            ARGS+=( -fsanitize=address,undefined,integer -fconstexpr-steps=2000000 )
         else
             ARGS+=( -fsanitize=address,undefined )
         fi
@@ -46,5 +46,5 @@ jobs:
       run: cppcheck --enable=all .
     - name: Clang-Tidy
       if: ${{ matrix.cxx == 'clang++' }}
-      run: clang-tidy -checks='bugprone-*,cert-*,clang-analyzer-*,misc-*,-misc-no-recursion,modernize-*,-modernize-use-trailing-return-type,performance-*,portability-*,readability-const-return-type,readability-container-*,readability-duplicate-include,readability-else-after-return,readability-make-member-function-cons,readability-non-const-parameter,readability-redundant-*,readability-simplify-*,readability-string-compare,readability-use-*' -header-filter='.*' *.cpp -- -Wall -O3 -std=gnu++17 -DHAVE_GMP
+      run: clang-tidy -checks='bugprone-*,cert-*,clang-analyzer-*,misc-*,-misc-no-recursion,modernize-*,-modernize-use-trailing-return-type,performance-*,portability-*,readability-const-return-type,readability-container-*,readability-duplicate-include,readability-else-after-return,readability-make-member-function-cons,readability-non-const-parameter,readability-redundant-*,readability-simplify-*,readability-string-compare,readability-use-*' -header-filter='.*' *.cpp -- -Wall -O3 -std=gnu++17 -fconstexpr-steps=2000000 -DHAVE_GMP
 
